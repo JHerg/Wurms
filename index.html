@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Physik-Duell</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2c3e50;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #ui-container {
+            width: 800px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #34495e;
+            padding: 10px 20px;
+            box-sizing: border-box;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .player-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 30%;
+        }
+
+        .hp-bar-bg {
+            width: 100%;
+            height: 20px;
+            background-color: #555;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #222;
+            margin-top: 5px;
+        }
+
+        .hp-bar-fill {
+            height: 100%;
+            width: 100%;
+            transition: width 0.3s ease-in-out;
+        }
+
+        #hp1 { background-color: #3498db; }
+        #hp2 { background-color: #e74c3c; }
+
+        #turn-indicator {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            width: 40%;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        canvas {
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+            border: 4px solid #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-container">
+        <div class="player-info">
+            <span style="color: #3498db; font-weight: bold;">Spieler 1 (Blau)</span>
+            <div class="hp-bar-bg"><div id="hp1" class="hp-bar-fill"></div></div>
+        </div>
+        <div id="turn-indicator">Spieler 1 ist am Zug</div>
+        <div class="player-info">
+            <span style="color: #e74c3c; font-weight: bold;">Spieler 2 (Rot)</span>
+            <div class="hp-bar-bg"><div id="hp2" class="hp-bar-fill"></div></div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+<script>
+/**
+ * ==========================================
+ * MODDING-BEREICH (GAME_PHYSICS)
+ * Hier können alle physikalischen Werte und
+ * Spielmechaniken angepasst werden!
+ * ==========================================
+ */
+const GAME_PHYSICS = {
+    gravity: 0.15,            // Stärke der Schwerkraft (höher = Projektil fällt schneller)
+    wind: 0.0,                // Windstärke (Positiv = weht nach rechts, Negativ = nach links)
+    maxDragDistance: 120,     // Wie weit die "Sehne" maximal gespannt werden kann (in Pixeln)
+    powerMultiplier: 0.18,    // Bestimmt, wie viel Geschwindigkeit aus der Zieh-Länge entsteht
+    explosionRadius: 40,      // Wie groß die optische Explosion auf dem Bildschirm wird
+    maxDamage: 34,            // Schaden pro direkten Treffer
+    projectileRadius: 5       // Größe des abgefeuerten Projektils
+};
+
+// --- Setup & Canvas ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// --- Spiel-Status Variablen ---
+let currentPlayer = 1; // 1 oder 2
+let gameState = 'idle'; // Mögliche States: 'idle', 'aiming', 'firing', 'gameover'
+let mouseX = 0;
+let mouseY = 0;
+
+// --- Entitäten ---
+const p1 = { x: 100, y: 0, w: 40, h: 60, color: '#3498db', hp: 100 };
+const p2 = { x: 660, y: 0, w: 40, h: 60, color: '#e74c3c', hp: 100 };
+const towers = [p1, p2];
+
+let projectile = { x: 0, y: 0, vx: 0, vy: 0, active: false };
+let explosions = []; // Speichert aktive Explosions-Animationen (Druckwellen)
+let particles = [];  // Für Funken, Trümmer und Rauch
+let floatingTexts = []; // Schadenszahlen
+
+const clouds = [
+    { x: 100, y: 80, speed: 0.2, scale: 1 },
+    { x: 400, y: 120, speed: 0.15, scale: 0.8 },
+    { x: 650, y: 60, speed: 0.25, scale: 1.2 },
+    { x: -50, y: 150, speed: 0.1, scale: 0.6 }
+];
+
+// --- Landschaft (Hügel) ---
+const ground = [];
+// Generiere eine einfache Hügellandschaft (Sinus-Welle)
+for (let x = 0; x <= canvas.width; x++) {
+    // Grundhöhe ist 400. Die Sinus-Funktion erzeugt die Hügel.
+    ground[x] = 400 - Math.sin(x / 80) * 40 - Math.cos(x / 150) * 30;
+}
+
+// Positioniere die Türme bündig auf dem Boden
+p1.y = ground[p1.x + p1.w / 2] - p1.h;
+p2.y = ground[p2.x + p2.w / 2] - p2.h;
+
+// --- Event Listeners für Maus-Steuerung ---
+canvas.addEventListener('mousedown', (e) => {
+    if (gameState !== 'idle') return;
+
+    const rect = canvas.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+
+    // Finde den Turm des aktuellen Spielers
+    const activeTower = currentPlayer === 1 ? p1 : p2;
+    const centerX = activeTower.x + activeTower.w / 2;
+    const centerY = activeTower.y + activeTower.h / 2;
+
+    // Prüfe, ob in der Nähe des eigenen Turms geklickt wurde
+    const dist = Math.hypot(mouseX - centerX, mouseY - centerY);
+    if (dist < 80) { // Toleranz-Radius zum Anklicken
+        gameState = 'aiming';
+    }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+});
+
+canvas.addEventListener('mouseup', (e) => {
+    if (gameState === 'aiming') {
+        const activeTower = currentPlayer === 1 ? p1 : p2;
+        const centerX = activeTower.x + activeTower.w / 2;
+        const centerY = activeTower.y; // Projektil spawnt oben am Turm
+
+        // Berechne den Zug-Vektor (Angry Birds Logik: Zugrichtung invertiert Schussrichtung)
+        let pullX = centerX - mouseX;
+        let pullY = centerY - mouseY;
+
+        // Limitiere die maximale Spann-Weite
+        const pullDist = Math.hypot(pullX, pullY);
+        if (pullDist > GAME_PHYSICS.maxDragDistance) {
+            const ratio = GAME_PHYSICS.maxDragDistance / pullDist;
+            pullX *= ratio;
+            pullY *= ratio;
+        }
+
+        // Setze das Projektil
+        projectile.x = centerX;
+        projectile.y = centerY;
+        projectile.vx = pullX * GAME_PHYSICS.powerMultiplier;
+        projectile.vy = pullY * GAME_PHYSICS.powerMultiplier;
+        projectile.active = true;
+
+        gameState = 'firing';
+    }
+});
+
+// --- Spiellogik & Physik ---
+function endTurn() {
+    if (gameState === 'gameover') return;
+    
+    currentPlayer = currentPlayer === 1 ? 2 : 1;
+    gameState = 'idle';
+    projectile.active = false;
+    
+    // UI Update
+    const indicator = document.getElementById('turn-indicator');
+    indicator.innerText = `Spieler ${currentPlayer} ist am Zug`;
+    indicator.style.color = currentPlayer === 1 ? '#3498db' : '#e74c3c';
+}
+
+function createExplosion(x, y) {
+    explosions.push({ x: x, y: y, radius: 1, alpha: 1.0 });
+    
+    // Neue Partikel-Explosion
+    for(let i=0; i<30; i++) {
+        particles.push({
+            x: x, y: y,
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.5) * 10 - 2, // Leichter Drang nach oben
+            life: 1.0,
+            decay: Math.random() * 0.03 + 0.02,
+            color: Math.random() > 0.5 ? '#e74c3c' : (Math.random() > 0.5 ? '#f1c40f' : '#e67e22'),
+            size: Math.random() * 5 + 2
+        });
+    }
+}
+
+function checkTowerCollision(px, py) {
+    const targetTower = currentPlayer === 1 ? p2 : p1;
+    
+    // Einfache Rechteck-Kollision (AABB)
+    if (px > targetTower.x && px < targetTower.x + targetTower.w &&
+        py > targetTower.y && py < targetTower.y + targetTower.h) {
+        
+        // Treffer!
+        createExplosion(px, py);
+        floatingTexts.push({ x: px, y: py - 20, text: `-${GAME_PHYSICS.maxDamage}`, life: 1.0 });
+        targetTower.hp -= GAME_PHYSICS.maxDamage;
+        if (targetTower.hp < 0) targetTower.hp = 0;
+        
+        // Update HP Bars in UI
+        document.getElementById(`hp${targetTower === p1 ? 1 : 2}`).style.width = `${targetTower.hp}%`;
+        
+        if (targetTower.hp <= 0) {
+            gameState = 'gameover';
+            document.getElementById('turn-indicator').innerText = `SPIELER ${currentPlayer} GEWINNT!`;
+        } else {
+            endTurn();
+        }
+        return true;
+    }
+    return false;
+}
+
+function updatePhysics() {
+    if (gameState === 'firing' && projectile.active) {
+        // Gravitation und Wind anwenden
+        projectile.vx += GAME_PHYSICS.wind;
+        projectile.vy += GAME_PHYSICS.gravity;
+        
+        // Position updaten
+        projectile.x += projectile.vx;
+        projectile.y += projectile.vy;
+
+        // 1. Check: Fliegt das Projektil links oder rechts aus dem Bildschirm?
+        if (projectile.x < 0 || projectile.x > canvas.width) {
+            endTurn();
+            return;
+        }
+
+        // (Es darf nach oben aus dem Bild fliegen, die Gravitation holt es zurück!)
+        if (projectile.y > canvas.height) { // Fällt ganz unten raus
+            endTurn();
+            return;
+        }
+
+        // 2. Check: Kollision mit dem Boden
+        let floorX = Math.floor(projectile.x);
+        if (floorX >= 0 && floorX <= canvas.width && projectile.y >= ground[floorX]) {
+            createExplosion(projectile.x, projectile.y);
+            endTurn();
+            return;
+        }
+
+        // 3. Check: Kollision mit dem gegnerischen Turm
+        if (checkTowerCollision(projectile.x, projectile.y)) {
+            projectile.active = false;
+        }
+
+    // Partikel updaten
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.vx *= 0.95; // Reibung
+        p.vy += GAME_PHYSICS.gravity * 0.5; // Leichte Gravitation
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    // Schadenszahlen updaten
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        let ft = floatingTexts[i];
+        ft.y -= 1; // Steigt nach oben
+        ft.life -= 0.02;
+        if (ft.life <= 0) floatingTexts.splice(i, 1);
+    }
+
+    // Rauch für stark beschädigte Burgen erzeugen
+    towers.forEach(tower => {
+        if (tower.hp <= 30 && Math.random() < 0.2) {
+            particles.push({
+                x: tower.x + Math.random() * tower.w,
+                y: tower.y + Math.random() * (tower.h / 2),
+                vx: (Math.random() - 0.5) * 1 + GAME_PHYSICS.wind,
+                vy: -Math.random() * 2 - 1,
+                life: 1.0,
+                decay: 0.015,
+                color: 'rgba(50, 50, 50, 0.6)',
+                size: Math.random() * 8 + 4
+            });
+        }
+    });
+    }
+
+    // Explosionen updaten
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        let exp = explosions[i];
+        exp.radius += 2; // Explosionsgeschwindigkeit
+        exp.alpha -= 0.05; // Fade-Out
+        if (exp.alpha <= 0) {
+            explosions.splice(i, 1);
+        }
+    }
+}
+
+// --- Render-Loop ---
+function draw() {
+    // 1. Hintergrund leeren
+    let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGrad.addColorStop(0, '#87CEEB');
+    skyGrad.addColorStop(1, '#E0F6FF');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 1.5 Wolken zeichnen
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    clouds.forEach(cloud => {
+        cloud.x += cloud.speed + (GAME_PHYSICS.wind * 1.5); // Wind beeinflusst Wolken leicht
+        if (cloud.x > canvas.width + 100) cloud.x = -100;
+        if (cloud.x < -100) cloud.x = canvas.width + 100;
+
+        ctx.save();
+        ctx.translate(cloud.x, cloud.y);
+        ctx.scale(cloud.scale, cloud.scale);
+        ctx.beginPath();
+        ctx.arc(0, 0, 20, 0, Math.PI * 2);
+        ctx.arc(15, -10, 25, 0, Math.PI * 2);
+        ctx.arc(35, 0, 20, 0, Math.PI * 2);
+        ctx.arc(15, 10, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    });
+
+    // 2. Landschaft zeichnen
+    // Erde (Dunkler Verlauf)
+    let dirtGrad = ctx.createLinearGradient(0, 350, 0, 500);
+    dirtGrad.addColorStop(0, '#5D4037');
+    dirtGrad.addColorStop(1, '#3E2723');
+    ctx.fillStyle = dirtGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height);
+    for (let x = 0; x <= canvas.width; x++) {
+        ctx.lineTo(x, ground[x]);
+    }
+    ctx.lineTo(canvas.width, canvas.height);
+    ctx.closePath();
+    ctx.fill();
+
+    // Grasnarbe oben
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = '#27ae60';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (let x = 0; x <= canvas.width; x++) {
+        if (x === 0) ctx.moveTo(x, ground[x]);
+        else ctx.lineTo(x, ground[x]);
+    }
+    ctx.stroke();
+    
+    // Helles Gras als Highlight
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#2ecc71';
+    ctx.stroke();
+
+    // 3. Türme zeichnen
+    towers.forEach(tower => {
+        ctx.fillStyle = tower.color;
+        
+        // Zinnen (Dach)
+        for(let i=0; i<3; i++) {
+            ctx.fillRect(tower.x + i * (tower.w/3) + 2, tower.y - 12, (tower.w/3)-4, 12);
+        }
+        
+        // Hauptgebäude
+        ctx.fillRect(tower.x, tower.y, tower.w, tower.h);
+        
+        // Mauerwerk-Effekt (Bricks)
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.lineWidth = 1;
+        const rows = 6;
+        const cols = 2;
+        const bH = tower.h / rows;
+        const bW = tower.w / cols;
+        for(let r=0; r<rows; r++) {
+            for(let c=0; c<cols; c++) {
+                let offset = (r%2===0) ? 0 : bW/2;
+                ctx.strokeRect(tower.x + c*bW - offset, tower.y + r*bH, bW, bH);
+            }
+        }
+
+        // Visueller Schaden (Risse & Brandspuren)
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(tower.x, tower.y - 15, tower.w, tower.h + 15);
+        ctx.clip(); // Maske: Nicht über den Turm hinaus zeichnen
+
+        if (tower.hp < 100) {
+            // Brandspuren
+            let grad = ctx.createRadialGradient(tower.x + tower.w/2, tower.y, 0, tower.x + tower.w/2, tower.y, 40);
+            let alpha = 1 - (tower.hp / 100); 
+            grad.addColorStop(0, `rgba(0, 0, 0, ${alpha * 0.8})`);
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(tower.x, tower.y-15, tower.w, tower.h+15);
+        }
+
+        // Risse & Abbrüche
+        ctx.strokeStyle = 'rgba(30, 30, 30, 0.85)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        if (tower.hp <= 75) {
+            ctx.moveTo(tower.x + 10, tower.y);
+            ctx.lineTo(tower.x + 15, tower.y + 15);
+            ctx.lineTo(tower.x + 5, tower.y + 25);
+        }
+        if (tower.hp <= 50) {
+            ctx.moveTo(tower.x + tower.w - 5, tower.y + 5);
+            ctx.lineTo(tower.x + tower.w - 15, tower.y + 20);
+            ctx.lineTo(tower.x + tower.w - 10, tower.y + 35);
+            ctx.moveTo(tower.x + tower.w/2, tower.y + 25);
+            ctx.lineTo(tower.x + tower.w/2 + 10, tower.y + 40);
+        }
+        if (tower.hp <= 25) {
+            ctx.moveTo(tower.x + 5, tower.y + 25);
+            ctx.lineTo(tower.x + 20, tower.y + 40);
+            ctx.lineTo(tower.x + 15, tower.y + 55);
+            
+            // Ein dunkles "Loch" zeichnen, wo Steine fehlen
+            ctx.fillStyle = 'rgba(0,0,0,0.85)';
+            ctx.fillRect(tower.x + tower.w - 18, tower.y + 15, 18, 15);
+            ctx.fillRect(tower.x, tower.y + 35, 12, 10);
+        }
+        ctx.stroke();
+        ctx.restore();
+    });
+
+    // 4. Ziel-Vorschau zeichnen (Gestrichelte Linie)
+    if (gameState === 'aiming') {
+        const activeTower = currentPlayer === 1 ? p1 : p2;
+        const centerX = activeTower.x + activeTower.w / 2;
+        const centerY = activeTower.y;
+
+        let pullX = centerX - mouseX;
+        let pullY = centerY - mouseY;
+
+        const pullDist = Math.hypot(pullX, pullY);
+        if (pullDist > GAME_PHYSICS.maxDragDistance) {
+            const ratio = GAME_PHYSICS.maxDragDistance / pullDist;
+            pullX *= ratio;
+            pullY *= ratio;
+        }
+
+        // Zeige die "Gummiband"-Sehne an
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(centerX - pullX, centerY - pullY);
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Berechne und zeichne die Flugbahn (Parabel-Vorschau)
+        let simX = centerX;
+        let simY = centerY;
+        let simVx = pullX * GAME_PHYSICS.powerMultiplier;
+        let simVy = pullY * GAME_PHYSICS.powerMultiplier;
+
+        ctx.beginPath();
+        ctx.moveTo(simX, simY);
+        ctx.setLineDash([5, 10]); // Gestrichelte Linie
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.lineWidth = 2;
+
+        for (let i = 0; i < 40; i++) { // Zeige die ersten 40 "Frames" der Flugbahn
+            simVx += GAME_PHYSICS.wind;
+            simVy += GAME_PHYSICS.gravity;
+            simX += simVx;
+            simY += simVy;
+            ctx.lineTo(simX, simY);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset für andere Zeichenoperationen
+    }
+
+    // 5. Projektil zeichnen ("Bombe" mit Highlight)
+    if (gameState === 'firing' && projectile.active) {
+        ctx.beginPath();
+        ctx.arc(projectile.x, projectile.y, GAME_PHYSICS.projectileRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#222';
+        ctx.fill();
+        
+        // Kleiner Glanzpunkt auf der Bombe
+        ctx.beginPath();
+        ctx.arc(projectile.x - 2, projectile.y - 2, GAME_PHYSICS.projectileRadius / 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fill();
+    }
+
+    // 6. Explosionen zeichnen (Druckwelle)
+    explosions.forEach(exp => {
+        ctx.beginPath();
+        ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 165, 0, ${exp.alpha * 0.5})`; 
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(255, 200, 0, ${exp.alpha})`;
+        ctx.stroke();
+    });
+
+    // 7. Partikel zeichnen (Trümmer & Rauch)
+    particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    });
+
+    // 8. Aufsteigende Schadenszahlen
+    floatingTexts.forEach(ft => {
+        ctx.font = 'bold 18px Arial';
+        ctx.fillStyle = `rgba(255, 0, 0, ${Math.max(0, ft.life)})`;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, ft.life)})`;
+        ctx.lineWidth = 3;
+        ctx.strokeText(ft.text, ft.x - 10, ft.y);
+        ctx.fillText(ft.text, ft.x - 10, ft.y);
+    });
+
+    // Loop fortsetzen
+    updatePhysics();
+    requestAnimationFrame(draw);
+}
+
+// Spiel starten
+draw();
+
+</script>
+</body>
+</html>
