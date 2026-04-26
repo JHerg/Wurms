@@ -36,7 +36,6 @@
         .p1-color { color: var(--accent-blue); text-shadow: 0 0 10px rgba(9, 132, 227, 0.4); }
         .p2-color { color: var(--accent-red); text-shadow: 0 0 10px rgba(214, 48, 49, 0.4); }
 
-        /* Squad UI */
         .squad-status { display: flex; gap: 8px; margin-top: 5px; }
         .squad-member { 
             width: 30px; height: 30px; background: #222; border-radius: 50%; 
@@ -86,8 +85,7 @@
     <div id="game-ui">
         <div class="player-panel">
             <span class="player-name p1-color">Team Blau</span>
-            <div id="squad-ui-1" class="squad-status">
-                </div>
+            <div id="squad-ui-1" class="squad-status"></div>
             <div id="score-1" class="badge" style="margin-top:5px;">Siege: 0</div>
         </div>
 
@@ -101,8 +99,7 @@
 
         <div class="player-panel right">
             <span class="player-name p2-color">Team Rot</span>
-            <div id="squad-ui-2" class="squad-status">
-                </div>
+            <div id="squad-ui-2" class="squad-status"></div>
             <div id="score-2" class="badge" style="margin-top:5px;">Siege: 0</div>
         </div>
     </div>
@@ -117,15 +114,6 @@
     </div>
 
 <script>
-/**
- * ============================================================================
- * GRANDMASTER ARCHITECTURE
- * 1. Squad System (3v3 Teams)
- * 2. Water / Death Zone Physics
- * 3. Dynamic UI bindings
- * ============================================================================
- */
-
 const CONFIG = {
     w: 1000, h: 600,
     gravity: 450,          
@@ -166,13 +154,20 @@ class Terrain {
         this.ctx.moveTo(0, this.height);
         
         const offset = Math.random() * 1000;
-        // Terrain generiert nur bis zum Wasserlevel, nicht bis ganz unten!
+        
+        // FIX: Sichere Terrain-Generierung ohne Wasser-Spawns
         for (let x = 0; x <= this.width; x += 10) {
-            const base = CONFIG.waterLevel - 50; 
-            const hill1 = Math.sin((x + offset) / 120) * 80;
-            const hill2 = Math.cos((x + offset) / 300) * 60;
+            // Basislinie liegt sicher über dem Wasser
+            const base = CONFIG.waterLevel - 150; // 400px
+            // Amplitude der Berge leicht reduziert
+            const hill1 = Math.sin((x + offset) / 120) * 70;
+            const hill2 = Math.cos((x + offset) / 300) * 50;
+            
+            // Tiefstes mögliches Tal: 400 - (-70) - (-50) = 520px.
+            // Das Wasser beginnt bei 550px. Garantiert 30px sicherer Boden!
             this.ctx.lineTo(x, base - hill1 - hill2);
         }
+        
         this.ctx.lineTo(this.width, this.height);
         this.ctx.closePath();
 
@@ -211,9 +206,9 @@ class Terrain {
 class Player {
     constructor(id, teamId, startX) {
         this.id = id;
-        this.teamId = teamId; // 1 oder 2
+        this.teamId = teamId;
         this.x = startX;
-        this.y = 0;
+        this.y = 0; // Spawnt oben und fällt sanft auf den sicheren Boden
         this.w = 36;
         this.h = 40;
         this.hp = 100;
@@ -227,21 +222,18 @@ class Player {
         let footX = this.x + this.w / 2;
         let footY = this.y + this.h;
         
-        // Fällt
         if (!terrain.isSolid(footX, footY + 2)) {
             this.y += 350 * dt; 
         } else {
-            // Aus dem Boden pushen
             while (terrain.isSolid(footX, footY) && footY > 0) {
                 this.y -= 1; footY -= 1;
             }
         }
 
-        // Tödliches Wasser berührt?
         if (this.y + this.h >= CONFIG.waterLevel) {
             this.hp = 0;
             this.isDead = true;
-            particles.spawnSplash(this.x + this.w/2, CONFIG.waterLevel);
+            if (particles) particles.spawnSplash(this.x + this.w/2, CONFIG.waterLevel);
         }
     }
 
@@ -251,17 +243,14 @@ class Player {
         ctx.save();
         ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
         
-        // Wackeln bei niedrigem HP
         if (this.hp < 40 && !isActive) {
             const shake = (40 - this.hp) * 0.05;
             ctx.translate(MathUtils.randomRange(-shake, shake), MathUtils.randomRange(-shake, shake));
         }
 
-        // Aktiver Spieler pulsiert leicht
         if (isActive) {
             const scale = 1 + Math.sin(performance.now() / 200) * 0.1;
             ctx.scale(scale, scale);
-            // Highlight Halo
             ctx.beginPath();
             ctx.arc(0, 0, 30, 0, Math.PI*2);
             ctx.fillStyle = this.teamId === 1 ? 'rgba(9, 132, 227, 0.3)' : 'rgba(214, 48, 49, 0.3)';
@@ -273,7 +262,6 @@ class Player {
         ctx.textBaseline = 'middle';
         ctx.fillText(this.avatar, 0, 0);
         
-        // HP Balken über dem Kopf
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(-18, -30, 36, 5);
         ctx.fillStyle = this.hp > 40 ? '#00b894' : '#d63031';
@@ -304,7 +292,6 @@ class Projectile {
         this.trail.push({x: this.x, y: this.y});
         if (this.trail.length > 20) this.trail.shift();
 
-        // Ins Wasser gefallen?
         if (this.y >= CONFIG.waterLevel) {
             gameManager.particles.spawnSplash(this.x, CONFIG.waterLevel);
             this.active = false;
@@ -366,7 +353,7 @@ class ParticleSystem {
 
     spawnSplash(x, y) {
         for (let i = 0; i < 25; i++) {
-            const angle = MathUtils.randomRange(Math.PI + 0.5, Math.PI*2 - 0.5); // Nur nach oben
+            const angle = MathUtils.randomRange(Math.PI + 0.5, Math.PI*2 - 0.5); 
             const speed = MathUtils.randomRange(50, 250);
             this.particles.push({
                 x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, 
@@ -459,20 +446,18 @@ class GameManager {
     setupNewRound() {
         this.terrain = new Terrain(CONFIG.w, CONFIG.h);
         
-        // Squads initialisieren (3 Spieler pro Team)
         this.teams = [
             [new Player(1, 1, 100), new Player(2, 1, 200), new Player(3, 1, 300)],
             [new Player(4, 2, CONFIG.w - 300), new Player(5, 2, CONFIG.w - 200), new Player(6, 2, CONFIG.w - 100)]
         ];
         
         this.activeTeamIdx = this.round % 2 === 0 ? 1 : 0;
-        this.activePlayerIdx = [0, 0]; // Welcher Squad-Member ist pro Team dran?
+        this.activePlayerIdx = [0, 0]; 
         
         this.wind = 0;
         this.projectiles = [];
         this.state = 'IDLE';
         
-        // Fall auf den Boden berechnen
         this.teams.forEach(team => team.forEach(p => p.update(1.0, this.terrain, null)));
         
         document.getElementById('overlay').classList.remove('active');
@@ -547,13 +532,11 @@ class GameManager {
             const proj = this.projectiles[i];
             if (!proj.active) continue;
 
-            // Terrain Collision
             if (this.terrain.isSolid(proj.x + (proj.vx*0.01), proj.y + (proj.vy*0.01))) {
                 this.handleExplosion(proj);
                 continue;
             }
 
-            // Direct Hit auf IRGENDEINEN Spieler (auch eigene!)
             this.teams.forEach(team => {
                 team.forEach(p => {
                     if (!p.isDead && proj.x > p.x && proj.x < p.x + p.w && proj.y > p.y && proj.y < p.y + p.h) {
@@ -599,7 +582,6 @@ class GameManager {
         if (!hasActiveProjectiles && this.state === 'FIRING') {
             this.state = 'WAITING';
             
-            // Haben alle Spieler eines Teams 0 HP?
             const t1Alive = this.teams[0].some(p => !p.isDead);
             const t2Alive = this.teams[1].some(p => !p.isDead);
 
@@ -614,10 +596,8 @@ class GameManager {
     nextTurn() {
         if (this.state === 'ROUND_OVER') return;
         
-        // Nächstes Team
         this.activeTeamIdx = this.activeTeamIdx === 0 ? 1 : 0;
         
-        // Finde den nächsten lebenden Spieler im neuen aktiven Team
         let team = this.teams[this.activeTeamIdx];
         let startIdx = this.activePlayerIdx[this.activeTeamIdx];
         let found = false;
@@ -649,7 +629,6 @@ class GameManager {
     }
 
     updateUI() {
-        // Squad UI rendern
         [0, 1].forEach(teamIdx => {
             const container = document.getElementById(`squad-ui-${teamIdx + 1}`);
             container.innerHTML = '';
@@ -657,7 +636,6 @@ class GameManager {
                 const div = document.createElement('div');
                 div.className = `squad-member ${p.isDead ? 'dead' : ''} ${this.state === 'IDLE' && this.activeTeamIdx === teamIdx && this.activePlayerIdx[teamIdx] === idx && !p.isDead ? 'active' : ''}`;
                 div.innerText = p.avatar;
-                // Kleiner HP-Balken im UI
                 const hpBar = document.createElement('div');
                 hpBar.style = `position:absolute; bottom:-5px; left:0; height:3px; background:${p.hp>40?'#00b894':'#d63031'}; width:${p.hp}%; border-radius:2px;`;
                 div.appendChild(hpBar);
@@ -715,7 +693,6 @@ class GameManager {
         this.lastTime = currentTime;
         if (dt > 0.05) dt = 0.05;
 
-        // --- UPDATE ---
         this.teams.forEach(team => team.forEach(p => p.update(dt, this.terrain, this.particles)));
         this.particles.update(dt, this.wind);
 
@@ -730,28 +707,23 @@ class GameManager {
             if (this.screenShake < 0) this.screenShake = 0;
         }
 
-        // --- RENDER ---
         this.ctx.save();
         if (this.screenShake > 0) {
             const maxShake = Math.min(this.screenShake, 20);
             this.ctx.translate(MathUtils.randomRange(-maxShake, maxShake), MathUtils.randomRange(-maxShake, maxShake));
         }
 
-        // Sky
         const skyGrad = this.ctx.createLinearGradient(0, 0, 0, CONFIG.h);
         skyGrad.addColorStop(0, '#0a0a1a'); skyGrad.addColorStop(1, '#2c3e50');
         this.ctx.fillStyle = skyGrad; this.ctx.fillRect(0, 0, CONFIG.w, CONFIG.h);
 
         this.terrain.draw(this.ctx);
 
-        // Water
         this.ctx.fillStyle = 'rgba(0, 168, 255, 0.4)';
         this.ctx.fillRect(0, CONFIG.waterLevel, CONFIG.w, CONFIG.h - CONFIG.waterLevel);
-        // Water Surface Highlight
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         this.ctx.fillRect(0, CONFIG.waterLevel, CONFIG.w, 4);
 
-        // Players
         this.teams.forEach((team, tIdx) => {
             team.forEach((p, pIdx) => {
                 const isActive = (this.state === 'IDLE' || this.state === 'AIMING') && this.activeTeamIdx === tIdx && this.activePlayerIdx[tIdx] === pIdx;
