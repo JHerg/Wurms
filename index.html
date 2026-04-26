@@ -3,71 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Physik-Duell: Masterclass Edition</title>
+    <title>Physik-Duell: Grandmaster Edition</title>
     <style>
         :root {
-            --bg-color: #0f141e;
-            --panel-bg: #1e2732;
+            --bg-color: #0b0e14;
+            --panel-bg: #151a22;
             --accent-blue: #0984e3;
             --accent-red: #d63031;
             --text-light: #dfe6e9;
+            --water-color: rgba(0, 168, 255, 0.6);
         }
 
         body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
+            margin: 0; padding: 0; background-color: var(--bg-color);
             font-family: 'Segoe UI', system-ui, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: var(--text-light);
-            min-height: 100vh;
-            overflow: hidden;
-            user-select: none;
+            display: flex; flex-direction: column; align-items: center;
+            color: var(--text-light); min-height: 100vh; overflow: hidden; user-select: none;
         }
 
         #game-ui {
-            width: 1000px; 
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            align-items: center;
-            background-color: var(--panel-bg);
-            padding: 15px 25px;
-            box-sizing: border-box;
-            border-bottom-left-radius: 12px;
-            border-bottom-right-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
-            margin-bottom: 15px;
-            position: relative;
-            z-index: 10;
+            width: 1000px; display: grid; grid-template-columns: 1fr auto 1fr;
+            align-items: center; background-color: var(--panel-bg);
+            padding: 15px 25px; box-sizing: border-box;
+            border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.8); margin-bottom: 15px; position: relative; z-index: 10;
         }
 
-        .player-panel { display: flex; flex-direction: column; gap: 8px; }
+        .player-panel { display: flex; flex-direction: column; gap: 5px; }
         .player-panel.right { align-items: flex-end; }
-        .player-name { font-weight: 800; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
-        .p1-color { color: var(--accent-blue); }
-        .p2-color { color: var(--accent-red); }
+        .player-name { font-weight: 800; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .p1-color { color: var(--accent-blue); text-shadow: 0 0 10px rgba(9, 132, 227, 0.4); }
+        .p2-color { color: var(--accent-red); text-shadow: 0 0 10px rgba(214, 48, 49, 0.4); }
 
-        .health-bar-container {
-            width: 100%; height: 20px; background-color: #111;
-            border-radius: 10px; border: 2px solid #333; position: relative; overflow: hidden;
+        /* Squad UI */
+        .squad-status { display: flex; gap: 8px; margin-top: 5px; }
+        .squad-member { 
+            width: 30px; height: 30px; background: #222; border-radius: 50%; 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 1rem; border: 2px solid #444; transition: 0.3s;
         }
-        .health-bar-fill { height: 100%; width: 100%; transition: width 0.3s ease; }
-        #hp-fill-1 { background: linear-gradient(90deg, #74b9ff, var(--accent-blue)); }
-        #hp-fill-2 { background: linear-gradient(90deg, #ff7675, var(--accent-red)); transform-origin: right; }
+        .squad-member.active { border-color: #fff; transform: scale(1.2); box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        .squad-member.dead { filter: grayscale(100%); opacity: 0.3; }
 
         .center-console { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-        
-        #status-display { font-size: 1.4rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        #status-display { font-size: 1.3rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
         
         .badges { display: flex; gap: 10px; }
-        .badge { background: rgba(0,0,0,0.4); padding: 4px 12px; border-radius: 20px; font-size: 0.9rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
+        .badge { background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
 
-        /* NEU: Waffensystem UI */
-        #weapon-selector {
-            display: flex; gap: 10px; margin-bottom: 10px;
-        }
+        #weapon-selector { display: flex; gap: 10px; margin-bottom: 10px; }
         .weapon-btn {
             background: #2d3436; color: white; border: 2px solid #555; padding: 8px 15px; 
             border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;
@@ -75,7 +60,7 @@
         .weapon-btn:hover { background: #636e72; }
         .weapon-btn.active { border-color: #00cec9; background: rgba(0, 206, 201, 0.2); box-shadow: 0 0 10px rgba(0,206,201,0.5); }
 
-        canvas { border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); cursor: crosshair; }
+        canvas { border-radius: 12px; box-shadow: 0 15px 50px rgba(0,0,0,0.9); cursor: crosshair; }
 
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -87,7 +72,6 @@
         #overlay button {
             margin-top: 25px; padding: 15px 40px; font-size: 1.3rem; font-weight: bold; cursor: pointer;
             background-color: #00b894; color: white; border: none; border-radius: 8px; transition: 0.2s;
-            text-transform: uppercase; letter-spacing: 1px;
         }
         #overlay button:hover { transform: scale(1.05); background-color: #00cec9; }
     </style>
@@ -95,15 +79,16 @@
 <body>
 
     <div id="weapon-selector">
-        <button id="wpn-standard" class="weapon-btn active">💣 Standard-Bombe</button>
-        <button id="wpn-cluster" class="weapon-btn">🎇 Streubombe (Splittert)</button>
+        <button id="wpn-standard" class="weapon-btn active">💣 Standard (Schwer)</button>
+        <button id="wpn-cluster" class="weapon-btn">🎇 Streubombe (Fläche)</button>
     </div>
 
     <div id="game-ui">
         <div class="player-panel">
-            <span class="player-name p1-color">Spieler 1</span>
-            <div class="health-bar-container"><div id="hp-fill-1" class="health-bar-fill"></div></div>
-            <div id="score-1" class="badge">Siege: 0</div>
+            <span class="player-name p1-color">Team Blau</span>
+            <div id="squad-ui-1" class="squad-status">
+                </div>
+            <div id="score-1" class="badge" style="margin-top:5px;">Siege: 0</div>
         </div>
 
         <div class="center-console">
@@ -115,9 +100,10 @@
         </div>
 
         <div class="player-panel right">
-            <span class="player-name p2-color">Spieler 2</span>
-            <div class="health-bar-container"><div id="hp-fill-2" class="health-bar-fill"></div></div>
-            <div id="score-2" class="badge">Siege: 0</div>
+            <span class="player-name p2-color">Team Rot</span>
+            <div id="squad-ui-2" class="squad-status">
+                </div>
+            <div id="score-2" class="badge" style="margin-top:5px;">Siege: 0</div>
         </div>
     </div>
 
@@ -125,7 +111,7 @@
         <canvas id="gameCanvas" width="1000" height="600"></canvas>
         <div id="overlay">
             <h1 id="overlay-title">Runde Beendet!</h1>
-            <p id="overlay-subtitle">Spieler X gewinnt die Runde.</p>
+            <p id="overlay-subtitle">Team X gewinnt.</p>
             <button id="btn-next">Nächste Runde</button>
         </div>
     </div>
@@ -133,165 +119,165 @@
 <script>
 /**
  * ============================================================================
- * MASTERCLASS ARCHITECTURE
- * 1. Pixel-Perfect Destructible Terrain (Offscreen Canvas Rendering)
- * 2. Multi-Projectile System (Arsenal / Cluster Bombs)
+ * GRANDMASTER ARCHITECTURE
+ * 1. Squad System (3v3 Teams)
+ * 2. Water / Death Zone Physics
+ * 3. Dynamic UI bindings
  * ============================================================================
  */
 
 const CONFIG = {
     w: 1000, h: 600,
     gravity: 450,          
-    maxWind: 200,
+    maxWind: 250,
     powerMultiplier: 5.5,
     maxDrag: 180,
+    waterLevel: 550, // Ab hier ist Wasser (Instant Death)
     emojis: ['🦆', '🛸', '⛄', '🗿', '🍔', '🦄', '💩', '🦀', '🌵', '🤡', '🦍', '🤖']
 };
 
 const WEAPONS = {
-    STANDARD: { radius: 6, expRadius: 65, damage: 45, color: '#222', type: 'STANDARD' },
+    STANDARD: { radius: 6, expRadius: 70, damage: 45, color: '#222', type: 'STANDARD' },
     CLUSTER:  { radius: 8, expRadius: 35, damage: 20, color: '#e17055', type: 'CLUSTER' },
     SHRAPNEL: { radius: 4, expRadius: 30, damage: 15, color: '#fab1a0', type: 'SHRAPNEL' }
 };
 
 class MathUtils {
-    static clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
     static randomRange(min, max) { return Math.random() * (max - min) + min; }
     static distance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
     static randomEmoji() { return CONFIG.emojis[Math.floor(Math.random() * CONFIG.emojis.length)]; }
 }
 
-// --- PIXEL-PERFECT TERRAIN ---
+// --- TERRAIN ---
 class Terrain {
     constructor(width, height) {
         this.width = width;
         this.height = height;
-        
-        // Das Offscreen Canvas speichert die visuelle und physische Karte
         this.canvas = document.createElement('canvas');
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
-        
         this.generate();
     }
 
     generate() {
         this.ctx.clearRect(0, 0, this.width, this.height);
-        
-        // Komplexe organische Form generieren
         this.ctx.beginPath();
         this.ctx.moveTo(0, this.height);
         
         const offset = Math.random() * 1000;
+        // Terrain generiert nur bis zum Wasserlevel, nicht bis ganz unten!
         for (let x = 0; x <= this.width; x += 10) {
-            const base = this.height * 0.7;
-            const hill1 = Math.sin((x + offset) / 150) * 80;
+            const base = CONFIG.waterLevel - 50; 
+            const hill1 = Math.sin((x + offset) / 120) * 80;
             const hill2 = Math.cos((x + offset) / 300) * 60;
-            const hill3 = Math.sin((x + offset) / 40) * 15;
-            this.ctx.lineTo(x, base - hill1 - hill2 - hill3);
+            this.ctx.lineTo(x, base - hill1 - hill2);
         }
         this.ctx.lineTo(this.width, this.height);
         this.ctx.closePath();
 
-        // Farbe & Verlauf
-        const dirtGrad = this.ctx.createLinearGradient(0, this.height * 0.4, 0, this.height);
-        dirtGrad.addColorStop(0, '#55efc4'); // Gras Kante
-        dirtGrad.addColorStop(0.05, '#2d3436'); // Fels
+        const dirtGrad = this.ctx.createLinearGradient(0, 200, 0, this.height);
+        dirtGrad.addColorStop(0, '#55efc4');
+        dirtGrad.addColorStop(0.1, '#2d3436');
         dirtGrad.addColorStop(1, '#111');
         
         this.ctx.fillStyle = dirtGrad;
         this.ctx.fill();
-        this.ctx.lineWidth = 15;
-        this.ctx.strokeStyle = '#00b894'; // Helles Gras
+        this.ctx.lineWidth = 12;
+        this.ctx.strokeStyle = '#00b894';
         this.ctx.stroke();
     }
 
     createCrater(cx, cy, radius) {
-        // Pixel-genau ausstanzen mit Radiergummi-Modus
         this.ctx.globalCompositeOperation = 'destination-out';
         this.ctx.beginPath();
         this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         this.ctx.fill();
-        this.ctx.globalCompositeOperation = 'source-over'; // Reset
+        this.ctx.globalCompositeOperation = 'source-over';
     }
 
     isSolid(x, y) {
-        if (x < 0 || x >= this.width || y >= this.height) return false;
-        if (y < 0) return false;
-        // Lese exakt einen Pixel (Alpha-Kanal) - Performant genug für wenige Checks pro Frame
+        if (x < 0 || x >= this.width || y >= this.height || y < 0) return false;
         const pixel = this.ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
-        return pixel[3] > 50; // Wenn Alpha > 50, ist dort Boden
+        return pixel[3] > 50; 
     }
 
     draw(targetCtx) {
-        // Zeichne das fertige, durchlöcherte Offscreen-Canvas auf den Hauptbildschirm
         targetCtx.drawImage(this.canvas, 0, 0);
     }
 }
 
+// --- ENTITIES ---
 class Player {
-    constructor(id, color, startX) {
+    constructor(id, teamId, startX) {
         this.id = id;
-        this.color = color;
+        this.teamId = teamId; // 1 oder 2
         this.x = startX;
         this.y = 0;
-        this.w = 40;
-        this.h = 50;
+        this.w = 36;
+        this.h = 40;
         this.hp = 100;
-        this.score = 0;
+        this.isDead = false;
         this.avatar = MathUtils.randomEmoji();
     }
 
-    resetForRound() {
-        this.hp = 100;
-        this.y = 0;
-        this.avatar = MathUtils.randomEmoji();
-    }
+    update(dt, terrain, particles) {
+        if (this.isDead) return;
 
-    update(dt, terrain) {
-        // Pixel-Perfect Gravity: Fällt, bis der Pixel unter den Füßen solide ist
         let footX = this.x + this.w / 2;
         let footY = this.y + this.h;
         
+        // Fällt
         if (!terrain.isSolid(footX, footY + 2)) {
-            this.y += 300 * dt; // Fallen
+            this.y += 350 * dt; 
         } else {
-            // Hügel hochdrücken, falls im Boden festgesteckt
+            // Aus dem Boden pushen
             while (terrain.isSolid(footX, footY) && footY > 0) {
-                this.y -= 1;
-                footY -= 1;
+                this.y -= 1; footY -= 1;
             }
+        }
+
+        // Tödliches Wasser berührt?
+        if (this.y + this.h >= CONFIG.waterLevel) {
+            this.hp = 0;
+            this.isDead = true;
+            particles.spawnSplash(this.x + this.w/2, CONFIG.waterLevel);
         }
     }
 
-    draw(ctx) {
+    draw(ctx, isActive) {
+        if (this.isDead) return;
+
         ctx.save();
         ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
         
-        if (this.hp < 40) {
-            const shake = (40 - this.hp) * 0.1;
+        // Wackeln bei niedrigem HP
+        if (this.hp < 40 && !isActive) {
+            const shake = (40 - this.hp) * 0.05;
             ctx.translate(MathUtils.randomRange(-shake, shake), MathUtils.randomRange(-shake, shake));
         }
 
-        ctx.font = '45px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        if (this.hp <= 0) {
-            ctx.globalAlpha = 0.5;
-            ctx.filter = 'grayscale(100%)';
+        // Aktiver Spieler pulsiert leicht
+        if (isActive) {
+            const scale = 1 + Math.sin(performance.now() / 200) * 0.1;
+            ctx.scale(scale, scale);
+            // Highlight Halo
+            ctx.beginPath();
+            ctx.arc(0, 0, 30, 0, Math.PI*2);
+            ctx.fillStyle = this.teamId === 1 ? 'rgba(9, 132, 227, 0.3)' : 'rgba(214, 48, 49, 0.3)';
+            ctx.fill();
         }
 
+        ctx.font = '36px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         ctx.fillText(this.avatar, 0, 0);
         
-        // HP Balken über dem Kopf für Pro-Feeling
-        if (this.hp > 0 && this.hp < 100) {
-            ctx.fillStyle = 'rgba(0,0,0,0.5)';
-            ctx.fillRect(-20, -35, 40, 6);
-            ctx.fillStyle = this.hp > 40 ? '#00b894' : '#d63031';
-            ctx.fillRect(-20, -35, 40 * (this.hp/100), 6);
-        }
+        // HP Balken über dem Kopf
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(-18, -30, 36, 5);
+        ctx.fillStyle = this.hp > 40 ? '#00b894' : '#d63031';
+        ctx.fillRect(-18, -30, 36 * (this.hp/100), 5);
         
         ctx.restore();
     }
@@ -299,11 +285,8 @@ class Player {
 
 class Projectile {
     constructor(x, y, vx, vy, stats) {
-        this.x = x;
-        this.y = y;
-        this.vx = vx;
-        this.vy = vy;
-        this.stats = stats; // Referenz auf WEAPONS
+        this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+        this.stats = stats;
         this.active = true;
         this.trail = [];
         this.hasSplit = false;
@@ -311,7 +294,6 @@ class Projectile {
 
     update(dt, wind, gameManager) {
         if (!this.active) return;
-
         const oldVy = this.vy;
         
         this.vx += wind * dt;
@@ -322,29 +304,25 @@ class Projectile {
         this.trail.push({x: this.x, y: this.y});
         if (this.trail.length > 20) this.trail.shift();
 
-        // Out of bounds
-        if (this.x < -200 || this.x > CONFIG.w + 200 || this.y > CONFIG.h + 100) {
+        // Ins Wasser gefallen?
+        if (this.y >= CONFIG.waterLevel) {
+            gameManager.particles.spawnSplash(this.x, CONFIG.waterLevel);
             this.active = false;
             return;
         }
 
-        // CLUSTER BOMB LOGIK (Trennen am Scheitelpunkt der Parabel)
-        if (this.stats.type === 'CLUSTER' && !this.hasSplit) {
-            // Wenn Vy von negativ (steigend) auf positiv (fallend) wechselt
-            if (oldVy < 0 && this.vy >= 0) {
-                this.hasSplit = true;
-                this.active = false; // Originalbombe löschen
-                
-                // 3 kleine Shrapnels spawnen
-                for(let i = -1; i <= 1; i++) {
-                    let spreadVx = this.vx + (i * 120);
-                    let spreadVy = this.vy - 100 + (Math.abs(i) * -50);
-                    gameManager.projectiles.push(new Projectile(this.x, this.y, spreadVx, spreadVy, WEAPONS.SHRAPNEL));
-                }
-                
-                // Visueller "Plopp"
-                gameManager.particles.spawnMiniPoof(this.x, this.y);
+        if (this.x < -200 || this.x > CONFIG.w + 200) {
+            this.active = false; return;
+        }
+
+        if (this.stats.type === 'CLUSTER' && !this.hasSplit && oldVy < 0 && this.vy >= 0) {
+            this.hasSplit = true; this.active = false; 
+            for(let i = -1; i <= 1; i++) {
+                let spreadVx = this.vx + (i * 120);
+                let spreadVy = this.vy - 100 + (Math.abs(i) * -50);
+                gameManager.projectiles.push(new Projectile(this.x, this.y, spreadVx, spreadVy, WEAPONS.SHRAPNEL));
             }
+            gameManager.particles.spawnMiniPoof(this.x, this.y);
         }
     }
 
@@ -354,13 +332,9 @@ class Projectile {
         if (this.trail.length > 1) {
             ctx.beginPath();
             ctx.moveTo(this.trail[0].x, this.trail[0].y);
-            for(let i = 1; i < this.trail.length; i++) {
-                ctx.lineTo(this.trail[i].x, this.trail[i].y);
-            }
-            const alpha = this.stats.type === 'SHRAPNEL' ? 0.3 : 0.6;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            for(let i = 1; i < this.trail.length; i++) ctx.lineTo(this.trail[i].x, this.trail[i].y);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${this.stats.type === 'SHRAPNEL' ? 0.3 : 0.6})`;
             ctx.lineWidth = this.stats.radius / 1.5;
-            ctx.lineCap = 'round';
             ctx.stroke();
         }
 
@@ -368,36 +342,36 @@ class Projectile {
         ctx.arc(this.x, this.y, this.stats.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.stats.color;
         ctx.fill();
-        
-        ctx.beginPath();
-        ctx.arc(this.x - 2, this.y - 2, this.stats.radius / 3, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        ctx.fill();
     }
 }
 
 class ParticleSystem {
     constructor() {
-        this.particles = [];
-        this.explosions = [];
-        this.texts = [];
+        this.particles = []; this.explosions = []; this.texts = [];
     }
 
     spawnExplosion(x, y, radius) {
         this.explosions.push({ x, y, radius: 10, maxRadius: radius, alpha: 1.0 });
-        
-        const count = radius > 40 ? 40 : 20;
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < (radius > 40 ? 40 : 20); i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = MathUtils.randomRange(50, 400);
             this.particles.push({
-                x, y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed - 150, 
-                life: 1.0,
-                decay: MathUtils.randomRange(0.5, 2.0),
+                x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 150, 
+                life: 1.0, decay: MathUtils.randomRange(0.5, 2.0),
                 color: Math.random() > 0.3 ? '#ff7675' : '#fdcb6e',
                 size: MathUtils.randomRange(2, 7)
+            });
+        }
+    }
+
+    spawnSplash(x, y) {
+        for (let i = 0; i < 25; i++) {
+            const angle = MathUtils.randomRange(Math.PI + 0.5, Math.PI*2 - 0.5); // Nur nach oben
+            const speed = MathUtils.randomRange(50, 250);
+            this.particles.push({
+                x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, 
+                life: 1.0, decay: MathUtils.randomRange(0.8, 1.5),
+                color: '#74b9ff', size: MathUtils.randomRange(3, 8)
             });
         }
     }
@@ -406,78 +380,60 @@ class ParticleSystem {
         for (let i = 0; i < 15; i++) {
             const angle = Math.random() * Math.PI * 2;
             this.particles.push({
-                x, y,
-                vx: Math.cos(angle) * 80, vy: Math.sin(angle) * 80, 
-                life: 1.0, decay: 1.5,
-                color: '#ecf0f1', size: MathUtils.randomRange(1, 4)
+                x, y, vx: Math.cos(angle) * 80, vy: Math.sin(angle) * 80, 
+                life: 1.0, decay: 1.5, color: '#ecf0f1', size: MathUtils.randomRange(1, 4)
             });
         }
     }
 
-    spawnDamageText(x, y, damage) {
-        this.texts.push({ x, y, text: `-${damage}`, life: 1.0 });
+    spawnDamageText(x, y, text, color = '#ff4757') {
+        this.texts.push({ x, y, text: text, life: 1.0, color: color });
     }
 
     update(dt, wind) {
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
-            p.vx += wind * 0.5 * dt; 
+            p.vx += wind * 0.3 * dt; 
             p.vy += CONFIG.gravity * 0.8 * dt;
-            p.x += p.vx * dt;
-            p.y += p.vy * dt;
+            p.x += p.vx * dt; p.y += p.vy * dt;
             p.life -= p.decay * dt;
             if (p.life <= 0) this.particles.splice(i, 1);
         }
-
         for (let i = this.explosions.length - 1; i >= 0; i--) {
             const exp = this.explosions[i];
-            exp.radius += 300 * dt; 
-            exp.alpha -= 2.0 * dt;
+            exp.radius += 300 * dt; exp.alpha -= 2.0 * dt;
             if (exp.alpha <= 0 || exp.radius >= exp.maxRadius) this.explosions.splice(i, 1);
         }
-
         for (let i = this.texts.length - 1; i >= 0; i--) {
             const t = this.texts[i];
-            t.y -= 60 * dt; 
-            t.life -= 1.0 * dt;
+            t.y -= 60 * dt; t.life -= 1.0 * dt;
             if (t.life <= 0) this.texts.splice(i, 1);
         }
     }
 
     draw(ctx) {
         this.explosions.forEach(exp => {
-            ctx.beginPath();
-            ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 150, 0, ${exp.alpha * 0.5})`; 
-            ctx.fill();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = `rgba(255, 200, 0, ${exp.alpha})`;
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 150, 0, ${exp.alpha * 0.5})`; ctx.fill();
+            ctx.lineWidth = 4; ctx.strokeStyle = `rgba(255, 200, 0, ${exp.alpha})`; ctx.stroke();
         });
-
         this.particles.forEach(p => {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fillStyle = p.color;
-            ctx.globalAlpha = Math.max(0, p.life);
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fill(); ctx.globalAlpha = 1.0;
         });
-
         this.texts.forEach(t => {
-            ctx.font = '900 26px Arial';
-            ctx.textAlign = 'center';
+            ctx.font = '900 24px Arial'; ctx.textAlign = 'center';
             const alpha = Math.max(0, t.life);
-            ctx.fillStyle = `rgba(255, 50, 50, ${alpha})`;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.lineWidth = 5;
-            ctx.strokeText(t.text, t.x, t.y);
-            ctx.fillText(t.text, t.x, t.y);
+            ctx.fillStyle = t.color; ctx.globalAlpha = alpha;
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+            ctx.strokeText(t.text, t.x, t.y); ctx.fillText(t.text, t.x, t.y);
+            ctx.globalAlpha = 1.0;
         });
     }
 }
 
-// --- CORE GAME ENGINE ---
+// --- GAME MANAGER ---
 class GameManager {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -487,38 +443,53 @@ class GameManager {
         this.round = 1;
         this.currentWeapon = WEAPONS.STANDARD;
         
-        this.terrain = new Terrain(CONFIG.w, CONFIG.h);
-        this.p1 = new Player(1, 'p1-color', 150);
-        this.p2 = new Player(2, 'p2-color', CONFIG.w - 190);
-        this.currentPlayer = this.p1;
+        this.score = [0, 0];
+        this.setupNewRound();
         
         this.particles = new ParticleSystem();
-        this.projectiles = []; // NEU: Array für multiple Projektile (Cluster)
-        
-        this.wind = 0;
+        this.projectiles = [];
         this.screenShake = 0;
         this.mouseX = 0; this.mouseY = 0;
         
         this.setupInputs();
         this.lastTime = performance.now();
-        
-        // Initiale Positionierung garantieren
-        this.p1.update(1.0, this.terrain);
-        this.p2.update(1.0, this.terrain);
-        
-        this.updateUI();
         requestAnimationFrame(this.gameLoop.bind(this));
     }
 
+    setupNewRound() {
+        this.terrain = new Terrain(CONFIG.w, CONFIG.h);
+        
+        // Squads initialisieren (3 Spieler pro Team)
+        this.teams = [
+            [new Player(1, 1, 100), new Player(2, 1, 200), new Player(3, 1, 300)],
+            [new Player(4, 2, CONFIG.w - 300), new Player(5, 2, CONFIG.w - 200), new Player(6, 2, CONFIG.w - 100)]
+        ];
+        
+        this.activeTeamIdx = this.round % 2 === 0 ? 1 : 0;
+        this.activePlayerIdx = [0, 0]; // Welcher Squad-Member ist pro Team dran?
+        
+        this.wind = 0;
+        this.projectiles = [];
+        this.state = 'IDLE';
+        
+        // Fall auf den Boden berechnen
+        this.teams.forEach(team => team.forEach(p => p.update(1.0, this.terrain, null)));
+        
+        document.getElementById('overlay').classList.remove('active');
+        this.updateUI();
+    }
+
+    getActivePlayer() {
+        return this.teams[this.activeTeamIdx][this.activePlayerIdx[this.activeTeamIdx]];
+    }
+
     setupInputs() {
-        // Weapon Selection UI
         document.getElementById('wpn-standard').addEventListener('click', (e) => {
             if (this.state !== 'IDLE') return;
             this.currentWeapon = WEAPONS.STANDARD;
             document.querySelectorAll('.weapon-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
         });
-        
         document.getElementById('wpn-cluster').addEventListener('click', (e) => {
             if (this.state !== 'IDLE') return;
             this.currentWeapon = WEAPONS.CLUSTER;
@@ -532,19 +503,17 @@ class GameManager {
             this.mouseX = e.clientX - rect.left;
             this.mouseY = e.clientY - rect.top;
 
-            const cx = this.currentPlayer.x + this.currentPlayer.w / 2;
-            const cy = this.currentPlayer.y + this.currentPlayer.h / 2;
-            
-            if (MathUtils.distance(this.mouseX, this.mouseY, cx, cy) < 120) {
-                this.state = 'AIMING';
-            }
+            const p = this.getActivePlayer();
+            if (!p || p.isDead) return;
+
+            const cx = p.x + p.w / 2; const cy = p.y + p.h / 2;
+            if (MathUtils.distance(this.mouseX, this.mouseY, cx, cy) < 120) this.state = 'AIMING';
         });
 
         window.addEventListener('mousemove', (e) => {
             if (this.state === 'AIMING') {
                 const rect = this.canvas.getBoundingClientRect();
-                this.mouseX = e.clientX - rect.left;
-                this.mouseY = e.clientY - rect.top;
+                this.mouseX = e.clientX - rect.left; this.mouseY = e.clientY - rect.top;
             }
         });
 
@@ -553,22 +522,19 @@ class GameManager {
         });
 
         document.getElementById('btn-next').addEventListener('click', () => {
-            this.startNewRound();
+            this.round++;
+            this.setupNewRound();
         });
     }
 
     fireProjectile() {
-        const cx = this.currentPlayer.x + this.currentPlayer.w / 2;
-        const cy = this.currentPlayer.y;
+        const p = this.getActivePlayer();
+        const cx = p.x + p.w / 2; const cy = p.y;
 
-        let pullX = cx - this.mouseX;
-        let pullY = cy - this.mouseY;
-
+        let pullX = cx - this.mouseX; let pullY = cy - this.mouseY;
         const dist = Math.hypot(pullX, pullY);
         if (dist > CONFIG.maxDrag) {
-            const ratio = CONFIG.maxDrag / dist;
-            pullX *= ratio;
-            pullY *= ratio;
+            const ratio = CONFIG.maxDrag / dist; pullX *= ratio; pullY *= ratio;
         }
 
         this.projectiles.push(new Projectile(cx, cy, pullX * CONFIG.powerMultiplier, pullY * CONFIG.powerMultiplier, this.currentWeapon));
@@ -581,66 +547,65 @@ class GameManager {
             const proj = this.projectiles[i];
             if (!proj.active) continue;
 
-            const px = proj.x;
-            const py = proj.y;
-
-            // 1. Pixel-Perfect Terrain Kollision
-            // Wir checken einen leichten Offset nach unten/vorne basierend auf Geschwindigkeit
-            const checkX = px + (proj.vx * 0.01);
-            const checkY = py + (proj.vy * 0.01);
-            
-            if (this.terrain.isSolid(checkX, checkY)) {
+            // Terrain Collision
+            if (this.terrain.isSolid(proj.x + (proj.vx*0.01), proj.y + (proj.vy*0.01))) {
                 this.handleExplosion(proj);
-                continue; // Gehe zum nächsten Projektil
+                continue;
             }
 
-            // 2. Direkter Spieler-Treffer
-            const enemy = this.currentPlayer === this.p1 ? this.p2 : this.p1;
-            if (px > enemy.x && px < enemy.x + enemy.w && py > enemy.y && py < enemy.y + enemy.h) {
-                this.handleExplosion(proj);
-            }
+            // Direct Hit auf IRGENDEINEN Spieler (auch eigene!)
+            this.teams.forEach(team => {
+                team.forEach(p => {
+                    if (!p.isDead && proj.x > p.x && proj.x < p.x + p.w && proj.y > p.y && proj.y < p.y + p.h) {
+                        this.handleExplosion(proj);
+                    }
+                });
+            });
         }
     }
 
     handleExplosion(proj) {
         proj.active = false;
-        
-        // Explosion & Krater (abhängig von Waffe)
         this.particles.spawnExplosion(proj.x, proj.y, proj.stats.expRadius);
         this.terrain.createCrater(proj.x, proj.y, proj.stats.expRadius);
         
-        // Splash Damage
-        [this.p1, this.p2].forEach(p => {
-            const cx = p.x + p.w / 2;
-            const cy = p.y + p.h / 2;
-            const dist = MathUtils.distance(proj.x, proj.y, cx, cy);
-            
-            // Etwas größerer Damage-Radius als der visuelle Krater
-            const dmgRadius = proj.stats.expRadius + 15; 
-            if (dist < dmgRadius) {
-                const damageRatio = Math.max(0.1, 1 - (dist / dmgRadius));
-                const damage = Math.round(proj.stats.damage * damageRatio);
+        this.teams.forEach(team => {
+            team.forEach(p => {
+                if (p.isDead) return;
+                const cx = p.x + p.w / 2; const cy = p.y + p.h / 2;
+                const dist = MathUtils.distance(proj.x, proj.y, cx, cy);
                 
-                p.hp = Math.max(0, p.hp - damage);
-                this.particles.spawnDamageText(cx, cy - 30, damage);
-                this.screenShake += damage * 0.6; // Kumulativer Shake bei Cluster-Bomben
-            }
+                const dmgRadius = proj.stats.expRadius + 20; 
+                if (dist < dmgRadius) {
+                    const damageRatio = Math.max(0.1, 1 - (dist / dmgRadius));
+                    const damage = Math.round(proj.stats.damage * damageRatio);
+                    p.hp -= damage;
+                    this.particles.spawnDamageText(cx, cy - 30, `-${damage}`);
+                    this.screenShake += damage * 0.5;
+                    
+                    if (p.hp <= 0) {
+                        p.hp = 0; p.isDead = true;
+                        this.particles.spawnDamageText(cx, cy - 60, "💀", '#fff');
+                    }
+                }
+            });
         });
-
         this.updateUI();
     }
 
     checkTurnEnd() {
-        // Prüfen, ob noch aktive Bomben oder Shrapnels in der Luft sind
         const hasActiveProjectiles = this.projectiles.some(p => p.active);
         
         if (!hasActiveProjectiles && this.state === 'FIRING') {
             this.state = 'WAITING';
             
-            if (this.p1.hp === 0 || this.p2.hp === 0) {
-                this.endRound();
+            // Haben alle Spieler eines Teams 0 HP?
+            const t1Alive = this.teams[0].some(p => !p.isDead);
+            const t2Alive = this.teams[1].some(p => !p.isDead);
+
+            if (!t1Alive || !t2Alive) {
+                setTimeout(() => this.endRound(t1Alive, t2Alive), 1500);
             } else {
-                // Kurz abwarten, bis Partikel verfliegen, dann Zug wechseln
                 setTimeout(() => this.nextTurn(), 1200);
             }
         }
@@ -649,56 +614,62 @@ class GameManager {
     nextTurn() {
         if (this.state === 'ROUND_OVER') return;
         
-        this.currentPlayer = this.currentPlayer === this.p1 ? this.p2 : this.p1;
+        // Nächstes Team
+        this.activeTeamIdx = this.activeTeamIdx === 0 ? 1 : 0;
+        
+        // Finde den nächsten lebenden Spieler im neuen aktiven Team
+        let team = this.teams[this.activeTeamIdx];
+        let startIdx = this.activePlayerIdx[this.activeTeamIdx];
+        let found = false;
+
+        for(let i = 1; i <= team.length; i++) {
+            let checkIdx = (startIdx + i) % team.length;
+            if (!team[checkIdx].isDead) {
+                this.activePlayerIdx[this.activeTeamIdx] = checkIdx;
+                found = true; break;
+            }
+        }
+
         this.wind = MathUtils.randomRange(-CONFIG.maxWind, CONFIG.maxWind);
         this.state = 'IDLE';
-        this.projectiles = []; // Array säubern
+        this.projectiles = [];
         this.updateUI();
     }
 
-    endRound() {
+    endRound(t1Alive, t2Alive) {
         this.state = 'ROUND_OVER';
-        
         let winnerText = "Unentschieden!";
-        if (this.p1.hp > 0 && this.p2.hp <= 0) {
-            this.p1.score++; winnerText = "Spieler 1 gewinnt die Runde!";
-        } else if (this.p2.hp > 0 && this.p1.hp <= 0) {
-            this.p2.score++; winnerText = "Spieler 2 gewinnt die Runde!";
-        }
+        if (t1Alive && !t2Alive) { this.score[0]++; winnerText = "Team Blau gewinnt die Runde!"; }
+        else if (t2Alive && !t1Alive) { this.score[1]++; winnerText = "Team Rot gewinnt die Runde!"; }
 
-        document.getElementById('score-1').innerText = `Siege: ${this.p1.score}`;
-        document.getElementById('score-2').innerText = `Siege: ${this.p2.score}`;
+        document.getElementById('score-1').innerText = `Siege: ${this.score[0]}`;
+        document.getElementById('score-2').innerText = `Siege: ${this.score[1]}`;
         document.getElementById('overlay-subtitle').innerText = winnerText;
         document.getElementById('overlay').classList.add('active');
     }
 
-    startNewRound() {
-        this.round++;
-        this.terrain.generate();
-        this.p1.resetForRound();
-        this.p2.resetForRound();
-        
-        // P1 und P2 nach Terrain-Generierung neu auf den Boden setzen
-        this.p1.update(1.0, this.terrain);
-        this.p2.update(1.0, this.terrain);
-        
-        this.currentPlayer = this.round % 2 === 0 ? this.p2 : this.p1;
-        this.wind = 0;
-        this.projectiles = [];
-        this.state = 'IDLE';
-        
-        document.getElementById('overlay').classList.remove('active');
-        this.updateUI();
-    }
-
     updateUI() {
-        document.getElementById('hp-fill-1').style.width = `${this.p1.hp}%`;
-        document.getElementById('hp-fill-2').style.width = `${this.p2.hp}%`;
+        // Squad UI rendern
+        [0, 1].forEach(teamIdx => {
+            const container = document.getElementById(`squad-ui-${teamIdx + 1}`);
+            container.innerHTML = '';
+            this.teams[teamIdx].forEach((p, idx) => {
+                const div = document.createElement('div');
+                div.className = `squad-member ${p.isDead ? 'dead' : ''} ${this.state === 'IDLE' && this.activeTeamIdx === teamIdx && this.activePlayerIdx[teamIdx] === idx && !p.isDead ? 'active' : ''}`;
+                div.innerText = p.avatar;
+                // Kleiner HP-Balken im UI
+                const hpBar = document.createElement('div');
+                hpBar.style = `position:absolute; bottom:-5px; left:0; height:3px; background:${p.hp>40?'#00b894':'#d63031'}; width:${p.hp}%; border-radius:2px;`;
+                div.appendChild(hpBar);
+                div.style.position = 'relative';
+                container.appendChild(div);
+            });
+        });
 
         const status = document.getElementById('status-display');
-        status.className = this.currentPlayer.color;
+        status.className = this.activeTeamIdx === 0 ? 'p1-color' : 'p2-color';
         
-        if (this.state === 'IDLE') status.innerText = `Zug: Spieler ${this.currentPlayer.id}`;
+        if (this.state === 'IDLE') status.innerText = `Zug: Team ${this.activeTeamIdx === 0 ? 'Blau' : 'Rot'}`;
         else if (this.state === 'AIMING') status.innerText = `Zielen...`;
         else if (this.state === 'FIRING') status.innerText = `Im Flug...`;
         else if (this.state === 'WAITING') status.innerText = `Abwarten...`;
@@ -712,58 +683,40 @@ class GameManager {
     }
 
     drawAimLine() {
-        const cx = this.currentPlayer.x + this.currentPlayer.w / 2;
-        const cy = this.currentPlayer.y;
-
-        let pullX = cx - this.mouseX;
-        let pullY = cy - this.mouseY;
-
+        const p = this.getActivePlayer();
+        if (!p) return;
+        const cx = p.x + p.w / 2; const cy = p.y;
+        let pullX = cx - this.mouseX; let pullY = cy - this.mouseY;
         const dist = Math.hypot(pullX, pullY);
         if (dist > CONFIG.maxDrag) {
-            const ratio = CONFIG.maxDrag / dist;
-            pullX *= ratio;
-            pullY *= ratio;
+            const ratio = CONFIG.maxDrag / dist; pullX *= ratio; pullY *= ratio;
         }
 
-        this.ctx.beginPath();
-        this.ctx.moveTo(cx, cy);
-        this.ctx.lineTo(cx - pullX, cy - pullY);
-        this.ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-        this.ctx.lineWidth = 3;
-        this.ctx.stroke();
+        this.ctx.beginPath(); this.ctx.moveTo(cx, cy); this.ctx.lineTo(cx - pullX, cy - pullY);
+        this.ctx.strokeStyle = 'rgba(255,255,255,0.4)'; this.ctx.lineWidth = 3; this.ctx.stroke();
 
         let simX = cx; let simY = cy;
-        let simVx = pullX * CONFIG.powerMultiplier;
-        let simVy = pullY * CONFIG.powerMultiplier;
+        let simVx = pullX * CONFIG.powerMultiplier; let simVy = pullY * CONFIG.powerMultiplier;
 
-        this.ctx.beginPath();
-        this.ctx.moveTo(simX, simY);
-        this.ctx.setLineDash([6, 8]);
-        
-        // Vorschau-Farbe entspricht Waffe
+        this.ctx.beginPath(); this.ctx.moveTo(simX, simY); this.ctx.setLineDash([6, 8]);
         this.ctx.strokeStyle = this.currentWeapon === WEAPONS.CLUSTER ? 'rgba(225, 112, 85, 0.8)' : 'rgba(255, 255, 255, 0.6)';
         this.ctx.lineWidth = 2;
 
-        const simDt = 0.05; 
         for (let i = 0; i < 35; i++) { 
-            simVx += this.wind * simDt;
-            simVy += CONFIG.gravity * simDt;
-            simX += simVx * simDt;
-            simY += simVy * simDt;
+            simVx += this.wind * 0.05; simVy += CONFIG.gravity * 0.05;
+            simX += simVx * 0.05; simY += simVy * 0.05;
             this.ctx.lineTo(simX, simY);
         }
-        this.ctx.stroke();
-        this.ctx.setLineDash([]);
+        this.ctx.stroke(); this.ctx.setLineDash([]);
     }
 
     gameLoop(currentTime) {
         let dt = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
-        if (dt > 0.05) dt = 0.05; // Hard-Cap gegen Lag-Durchschlagen
+        if (dt > 0.05) dt = 0.05;
 
         // --- UPDATE ---
-        this.p1.update(dt, this.terrain);
-        this.p2.update(dt, this.terrain);
+        this.teams.forEach(team => team.forEach(p => p.update(dt, this.terrain, this.particles)));
         this.particles.update(dt, this.wind);
 
         if (this.state === 'FIRING') {
@@ -779,39 +732,43 @@ class GameManager {
 
         // --- RENDER ---
         this.ctx.save();
-        
         if (this.screenShake > 0) {
-            const maxShake = Math.min(this.screenShake, 20); // Cap
-            const dx = MathUtils.randomRange(-maxShake, maxShake);
-            const dy = MathUtils.randomRange(-maxShake, maxShake);
-            this.ctx.translate(dx, dy);
+            const maxShake = Math.min(this.screenShake, 20);
+            this.ctx.translate(MathUtils.randomRange(-maxShake, maxShake), MathUtils.randomRange(-maxShake, maxShake));
         }
 
-        // Deep Night Sky Hintergrund
+        // Sky
         const skyGrad = this.ctx.createLinearGradient(0, 0, 0, CONFIG.h);
-        skyGrad.addColorStop(0, '#0a0a1a');
-        skyGrad.addColorStop(1, '#2c3e50');
-        this.ctx.fillStyle = skyGrad;
-        this.ctx.fillRect(0, 0, CONFIG.w, CONFIG.h);
+        skyGrad.addColorStop(0, '#0a0a1a'); skyGrad.addColorStop(1, '#2c3e50');
+        this.ctx.fillStyle = skyGrad; this.ctx.fillRect(0, 0, CONFIG.w, CONFIG.h);
 
-        // Render Order: Terrain -> Players -> Aim -> Projectiles -> Particles
         this.terrain.draw(this.ctx);
-        this.p1.draw(this.ctx);
-        this.p2.draw(this.ctx);
+
+        // Water
+        this.ctx.fillStyle = 'rgba(0, 168, 255, 0.4)';
+        this.ctx.fillRect(0, CONFIG.waterLevel, CONFIG.w, CONFIG.h - CONFIG.waterLevel);
+        // Water Surface Highlight
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        this.ctx.fillRect(0, CONFIG.waterLevel, CONFIG.w, 4);
+
+        // Players
+        this.teams.forEach((team, tIdx) => {
+            team.forEach((p, pIdx) => {
+                const isActive = (this.state === 'IDLE' || this.state === 'AIMING') && this.activeTeamIdx === tIdx && this.activePlayerIdx[tIdx] === pIdx;
+                p.draw(this.ctx, isActive);
+            });
+        });
         
         if (this.state === 'AIMING') this.drawAimLine();
         this.projectiles.forEach(p => p.draw(this.ctx));
         this.particles.draw(this.ctx);
 
         this.ctx.restore();
-
         requestAnimationFrame(this.gameLoop.bind(this));
     }
 }
 
-window.onload = () => {
-    const game = new GameManager();
-};
+window.onload = () => new GameManager();
 </script>
 </body>
 </html>
