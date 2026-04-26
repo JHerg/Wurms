@@ -3,577 +3,815 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Physik-Duell</title>
+    <title>Physik-Duell: Masterclass Edition</title>
     <style>
+        :root {
+            --bg-color: #0f141e;
+            --panel-bg: #1e2732;
+            --accent-blue: #0984e3;
+            --accent-red: #d63031;
+            --text-light: #dfe6e9;
+        }
+
         body {
             margin: 0;
             padding: 0;
-            background-color: #2c3e50;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            font-family: 'Segoe UI', system-ui, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            color: white;
-            height: 100vh;
+            color: var(--text-light);
+            min-height: 100vh;
             overflow: hidden;
+            user-select: none;
         }
 
-        #ui-container {
-            width: 800px;
-            display: flex;
-            justify-content: space-between;
+        #game-ui {
+            width: 1000px; 
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
             align-items: center;
-            background-color: #34495e;
-            padding: 10px 20px;
+            background-color: var(--panel-bg);
+            padding: 15px 25px;
             box-sizing: border-box;
-            border-bottom-left-radius: 10px;
-            border-bottom-right-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 10;
         }
 
-        .player-info {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 30%;
-        }
+        .player-panel { display: flex; flex-direction: column; gap: 8px; }
+        .player-panel.right { align-items: flex-end; }
+        .player-name { font-weight: 800; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
+        .p1-color { color: var(--accent-blue); }
+        .p2-color { color: var(--accent-red); }
 
-        .hp-bar-bg {
-            width: 100%;
-            height: 20px;
-            background-color: #555;
-            border-radius: 10px;
-            overflow: hidden;
-            border: 2px solid #222;
-            margin-top: 5px;
+        .health-bar-container {
+            width: 100%; height: 20px; background-color: #111;
+            border-radius: 10px; border: 2px solid #333; position: relative; overflow: hidden;
         }
+        .health-bar-fill { height: 100%; width: 100%; transition: width 0.3s ease; }
+        #hp-fill-1 { background: linear-gradient(90deg, #74b9ff, var(--accent-blue)); }
+        #hp-fill-2 { background: linear-gradient(90deg, #ff7675, var(--accent-red)); transform-origin: right; }
 
-        .hp-bar-fill {
-            height: 100%;
-            width: 100%;
-            transition: width 0.3s ease-in-out;
+        .center-console { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        
+        #status-display { font-size: 1.4rem; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        
+        .badges { display: flex; gap: 10px; }
+        .badge { background: rgba(0,0,0,0.4); padding: 4px 12px; border-radius: 20px; font-size: 0.9rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
+
+        /* NEU: Waffensystem UI */
+        #weapon-selector {
+            display: flex; gap: 10px; margin-bottom: 10px;
         }
-
-        #hp1 { background-color: #3498db; }
-        #hp2 { background-color: #e74c3c; }
-
-        #turn-indicator {
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-align: center;
-            width: 40%;
-            text-shadow: 1px 1px 2px black;
+        .weapon-btn {
+            background: #2d3436; color: white; border: 2px solid #555; padding: 8px 15px; 
+            border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.2s;
         }
+        .weapon-btn:hover { background: #636e72; }
+        .weapon-btn.active { border-color: #00cec9; background: rgba(0, 206, 201, 0.2); box-shadow: 0 0 10px rgba(0,206,201,0.5); }
 
-        canvas {
-            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
-            border: 4px solid #fff;
-            border-radius: 10px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-            cursor: crosshair;
+        canvas { border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); cursor: crosshair; }
+
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center;
+            flex-direction: column; z-index: 100; backdrop-filter: blur(5px); border-radius: 12px;
         }
+        #overlay.active { display: flex; }
+        #overlay h1 { font-size: 4rem; margin: 0; text-shadow: 0 4px 15px rgba(0,0,0,0.8); }
+        #overlay button {
+            margin-top: 25px; padding: 15px 40px; font-size: 1.3rem; font-weight: bold; cursor: pointer;
+            background-color: #00b894; color: white; border: none; border-radius: 8px; transition: 0.2s;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        #overlay button:hover { transform: scale(1.05); background-color: #00cec9; }
     </style>
 </head>
 <body>
 
-    <div id="ui-container">
-        <div class="player-info">
-            <span style="color: #3498db; font-weight: bold;">Spieler 1 (Blau)</span>
-            <div class="hp-bar-bg"><div id="hp1" class="hp-bar-fill"></div></div>
+    <div id="weapon-selector">
+        <button id="wpn-standard" class="weapon-btn active">💣 Standard-Bombe</button>
+        <button id="wpn-cluster" class="weapon-btn">🎇 Streubombe (Splittert)</button>
+    </div>
+
+    <div id="game-ui">
+        <div class="player-panel">
+            <span class="player-name p1-color">Spieler 1</span>
+            <div class="health-bar-container"><div id="hp-fill-1" class="health-bar-fill"></div></div>
+            <div id="score-1" class="badge">Siege: 0</div>
         </div>
-        <div id="turn-indicator">Spieler 1 ist am Zug</div>
-        <div class="player-info">
-            <span style="color: #e74c3c; font-weight: bold;">Spieler 2 (Rot)</span>
-            <div class="hp-bar-bg"><div id="hp2" class="hp-bar-fill"></div></div>
+
+        <div class="center-console">
+            <div id="status-display" class="p1-color">Zielen...</div>
+            <div class="badges">
+                <div id="wind-badge" class="badge" style="color: #fdcb6e;">Wind: 0.0</div>
+                <div id="round-badge" class="badge">Runde 1</div>
+            </div>
+        </div>
+
+        <div class="player-panel right">
+            <span class="player-name p2-color">Spieler 2</span>
+            <div class="health-bar-container"><div id="hp-fill-2" class="health-bar-fill"></div></div>
+            <div id="score-2" class="badge">Siege: 0</div>
         </div>
     </div>
 
-    <canvas id="gameCanvas" width="800" height="500"></canvas>
+    <div style="position: relative;">
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        <div id="overlay">
+            <h1 id="overlay-title">Runde Beendet!</h1>
+            <p id="overlay-subtitle">Spieler X gewinnt die Runde.</p>
+            <button id="btn-next">Nächste Runde</button>
+        </div>
+    </div>
 
 <script>
 /**
- * ==========================================
- * MODDING-BEREICH (GAME_PHYSICS)
- * Hier können alle physikalischen Werte und
- * Spielmechaniken angepasst werden!
- * ==========================================
+ * ============================================================================
+ * MASTERCLASS ARCHITECTURE
+ * 1. Pixel-Perfect Destructible Terrain (Offscreen Canvas Rendering)
+ * 2. Multi-Projectile System (Arsenal / Cluster Bombs)
+ * ============================================================================
  */
-const GAME_PHYSICS = {
-    gravity: 0.15,            // Stärke der Schwerkraft (höher = Projektil fällt schneller)
-    wind: 0.0,                // Windstärke (Positiv = weht nach rechts, Negativ = nach links)
-    maxDragDistance: 120,     // Wie weit die "Sehne" maximal gespannt werden kann (in Pixeln)
-    powerMultiplier: 0.18,    // Bestimmt, wie viel Geschwindigkeit aus der Zieh-Länge entsteht
-    explosionRadius: 40,      // Wie groß die optische Explosion auf dem Bildschirm wird
-    maxDamage: 34,            // Schaden pro direkten Treffer
-    projectileRadius: 5       // Größe des abgefeuerten Projektils
+
+const CONFIG = {
+    w: 1000, h: 600,
+    gravity: 450,          
+    maxWind: 200,
+    powerMultiplier: 5.5,
+    maxDrag: 180,
+    emojis: ['🦆', '🛸', '⛄', '🗿', '🍔', '🦄', '💩', '🦀', '🌵', '🤡', '🦍', '🤖']
 };
 
-// --- Setup & Canvas ---
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+const WEAPONS = {
+    STANDARD: { radius: 6, expRadius: 65, damage: 45, color: '#222', type: 'STANDARD' },
+    CLUSTER:  { radius: 8, expRadius: 35, damage: 20, color: '#e17055', type: 'CLUSTER' },
+    SHRAPNEL: { radius: 4, expRadius: 30, damage: 15, color: '#fab1a0', type: 'SHRAPNEL' }
+};
 
-// --- Spiel-Status Variablen ---
-let currentPlayer = 1; // 1 oder 2
-let gameState = 'idle'; // Mögliche States: 'idle', 'aiming', 'firing', 'gameover'
-let mouseX = 0;
-let mouseY = 0;
-
-// --- Entitäten ---
-const p1 = { x: 100, y: 0, w: 40, h: 60, color: '#3498db', hp: 100 };
-const p2 = { x: 660, y: 0, w: 40, h: 60, color: '#e74c3c', hp: 100 };
-const towers = [p1, p2];
-
-let projectile = { x: 0, y: 0, vx: 0, vy: 0, active: false };
-let explosions = []; // Speichert aktive Explosions-Animationen (Druckwellen)
-let particles = [];  // Für Funken, Trümmer und Rauch
-let floatingTexts = []; // Schadenszahlen
-
-const clouds = [
-    { x: 100, y: 80, speed: 0.2, scale: 1 },
-    { x: 400, y: 120, speed: 0.15, scale: 0.8 },
-    { x: 650, y: 60, speed: 0.25, scale: 1.2 },
-    { x: -50, y: 150, speed: 0.1, scale: 0.6 }
-];
-
-// --- Landschaft (Hügel) ---
-const ground = [];
-// Generiere eine einfache Hügellandschaft (Sinus-Welle)
-for (let x = 0; x <= canvas.width; x++) {
-    // Grundhöhe ist 400. Die Sinus-Funktion erzeugt die Hügel.
-    ground[x] = 400 - Math.sin(x / 80) * 40 - Math.cos(x / 150) * 30;
+class MathUtils {
+    static clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+    static randomRange(min, max) { return Math.random() * (max - min) + min; }
+    static distance(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+    static randomEmoji() { return CONFIG.emojis[Math.floor(Math.random() * CONFIG.emojis.length)]; }
 }
 
-// Positioniere die Türme bündig auf dem Boden
-p1.y = ground[p1.x + p1.w / 2] - p1.h;
-p2.y = ground[p2.x + p2.w / 2] - p2.h;
-
-// --- Event Listeners für Maus-Steuerung ---
-canvas.addEventListener('mousedown', (e) => {
-    if (gameState !== 'idle') return;
-
-    const rect = canvas.getBoundingClientRect();
-    mouseX = e.clientX - rect.left;
-    mouseY = e.clientY - rect.top;
-
-    // Finde den Turm des aktuellen Spielers
-    const activeTower = currentPlayer === 1 ? p1 : p2;
-    const centerX = activeTower.x + activeTower.w / 2;
-    const centerY = activeTower.y + activeTower.h / 2;
-
-    // Prüfe, ob in der Nähe des eigenen Turms geklickt wurde
-    const dist = Math.hypot(mouseX - centerX, mouseY - centerY);
-    if (dist < 80) { // Toleranz-Radius zum Anklicken
-        gameState = 'aiming';
+// --- PIXEL-PERFECT TERRAIN ---
+class Terrain {
+    constructor(width, height) {
+        this.width = width;
+        this.height = height;
+        
+        // Das Offscreen Canvas speichert die visuelle und physische Karte
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+        
+        this.generate();
     }
-});
 
-canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    mouseX = e.clientX - rect.left;
-    mouseY = e.clientY - rect.top;
-});
+    generate() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+        
+        // Komplexe organische Form generieren
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, this.height);
+        
+        const offset = Math.random() * 1000;
+        for (let x = 0; x <= this.width; x += 10) {
+            const base = this.height * 0.7;
+            const hill1 = Math.sin((x + offset) / 150) * 80;
+            const hill2 = Math.cos((x + offset) / 300) * 60;
+            const hill3 = Math.sin((x + offset) / 40) * 15;
+            this.ctx.lineTo(x, base - hill1 - hill2 - hill3);
+        }
+        this.ctx.lineTo(this.width, this.height);
+        this.ctx.closePath();
 
-canvas.addEventListener('mouseup', (e) => {
-    if (gameState === 'aiming') {
-        const activeTower = currentPlayer === 1 ? p1 : p2;
-        const centerX = activeTower.x + activeTower.w / 2;
-        const centerY = activeTower.y; // Projektil spawnt oben am Turm
+        // Farbe & Verlauf
+        const dirtGrad = this.ctx.createLinearGradient(0, this.height * 0.4, 0, this.height);
+        dirtGrad.addColorStop(0, '#55efc4'); // Gras Kante
+        dirtGrad.addColorStop(0.05, '#2d3436'); // Fels
+        dirtGrad.addColorStop(1, '#111');
+        
+        this.ctx.fillStyle = dirtGrad;
+        this.ctx.fill();
+        this.ctx.lineWidth = 15;
+        this.ctx.strokeStyle = '#00b894'; // Helles Gras
+        this.ctx.stroke();
+    }
 
-        // Berechne den Zug-Vektor (Angry Birds Logik: Zugrichtung invertiert Schussrichtung)
-        let pullX = centerX - mouseX;
-        let pullY = centerY - mouseY;
+    createCrater(cx, cy, radius) {
+        // Pixel-genau ausstanzen mit Radiergummi-Modus
+        this.ctx.globalCompositeOperation = 'destination-out';
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.globalCompositeOperation = 'source-over'; // Reset
+    }
 
-        // Limitiere die maximale Spann-Weite
-        const pullDist = Math.hypot(pullX, pullY);
-        if (pullDist > GAME_PHYSICS.maxDragDistance) {
-            const ratio = GAME_PHYSICS.maxDragDistance / pullDist;
-            pullX *= ratio;
-            pullY *= ratio;
+    isSolid(x, y) {
+        if (x < 0 || x >= this.width || y >= this.height) return false;
+        if (y < 0) return false;
+        // Lese exakt einen Pixel (Alpha-Kanal) - Performant genug für wenige Checks pro Frame
+        const pixel = this.ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
+        return pixel[3] > 50; // Wenn Alpha > 50, ist dort Boden
+    }
+
+    draw(targetCtx) {
+        // Zeichne das fertige, durchlöcherte Offscreen-Canvas auf den Hauptbildschirm
+        targetCtx.drawImage(this.canvas, 0, 0);
+    }
+}
+
+class Player {
+    constructor(id, color, startX) {
+        this.id = id;
+        this.color = color;
+        this.x = startX;
+        this.y = 0;
+        this.w = 40;
+        this.h = 50;
+        this.hp = 100;
+        this.score = 0;
+        this.avatar = MathUtils.randomEmoji();
+    }
+
+    resetForRound() {
+        this.hp = 100;
+        this.y = 0;
+        this.avatar = MathUtils.randomEmoji();
+    }
+
+    update(dt, terrain) {
+        // Pixel-Perfect Gravity: Fällt, bis der Pixel unter den Füßen solide ist
+        let footX = this.x + this.w / 2;
+        let footY = this.y + this.h;
+        
+        if (!terrain.isSolid(footX, footY + 2)) {
+            this.y += 300 * dt; // Fallen
+        } else {
+            // Hügel hochdrücken, falls im Boden festgesteckt
+            while (terrain.isSolid(footX, footY) && footY > 0) {
+                this.y -= 1;
+                footY -= 1;
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+        
+        if (this.hp < 40) {
+            const shake = (40 - this.hp) * 0.1;
+            ctx.translate(MathUtils.randomRange(-shake, shake), MathUtils.randomRange(-shake, shake));
         }
 
-        // Setze das Projektil
-        projectile.x = centerX;
-        projectile.y = centerY;
-        projectile.vx = pullX * GAME_PHYSICS.powerMultiplier;
-        projectile.vy = pullY * GAME_PHYSICS.powerMultiplier;
-        projectile.active = true;
+        ctx.font = '45px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        if (this.hp <= 0) {
+            ctx.globalAlpha = 0.5;
+            ctx.filter = 'grayscale(100%)';
+        }
 
-        gameState = 'firing';
+        ctx.fillText(this.avatar, 0, 0);
+        
+        // HP Balken über dem Kopf für Pro-Feeling
+        if (this.hp > 0 && this.hp < 100) {
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(-20, -35, 40, 6);
+            ctx.fillStyle = this.hp > 40 ? '#00b894' : '#d63031';
+            ctx.fillRect(-20, -35, 40 * (this.hp/100), 6);
+        }
+        
+        ctx.restore();
     }
-});
-
-// --- Spiellogik & Physik ---
-function endTurn() {
-    if (gameState === 'gameover') return;
-    
-    currentPlayer = currentPlayer === 1 ? 2 : 1;
-    gameState = 'idle';
-    projectile.active = false;
-    
-    // UI Update
-    const indicator = document.getElementById('turn-indicator');
-    indicator.innerText = `Spieler ${currentPlayer} ist am Zug`;
-    indicator.style.color = currentPlayer === 1 ? '#3498db' : '#e74c3c';
 }
 
-function createExplosion(x, y) {
-    explosions.push({ x: x, y: y, radius: 1, alpha: 1.0 });
-    
-    // Neue Partikel-Explosion
-    for(let i=0; i<30; i++) {
-        particles.push({
-            x: x, y: y,
-            vx: (Math.random() - 0.5) * 10,
-            vy: (Math.random() - 0.5) * 10 - 2, // Leichter Drang nach oben
-            life: 1.0,
-            decay: Math.random() * 0.03 + 0.02,
-            color: Math.random() > 0.5 ? '#e74c3c' : (Math.random() > 0.5 ? '#f1c40f' : '#e67e22'),
-            size: Math.random() * 5 + 2
+class Projectile {
+    constructor(x, y, vx, vy, stats) {
+        this.x = x;
+        this.y = y;
+        this.vx = vx;
+        this.vy = vy;
+        this.stats = stats; // Referenz auf WEAPONS
+        this.active = true;
+        this.trail = [];
+        this.hasSplit = false;
+    }
+
+    update(dt, wind, gameManager) {
+        if (!this.active) return;
+
+        const oldVy = this.vy;
+        
+        this.vx += wind * dt;
+        this.vy += CONFIG.gravity * dt;
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+
+        this.trail.push({x: this.x, y: this.y});
+        if (this.trail.length > 20) this.trail.shift();
+
+        // Out of bounds
+        if (this.x < -200 || this.x > CONFIG.w + 200 || this.y > CONFIG.h + 100) {
+            this.active = false;
+            return;
+        }
+
+        // CLUSTER BOMB LOGIK (Trennen am Scheitelpunkt der Parabel)
+        if (this.stats.type === 'CLUSTER' && !this.hasSplit) {
+            // Wenn Vy von negativ (steigend) auf positiv (fallend) wechselt
+            if (oldVy < 0 && this.vy >= 0) {
+                this.hasSplit = true;
+                this.active = false; // Originalbombe löschen
+                
+                // 3 kleine Shrapnels spawnen
+                for(let i = -1; i <= 1; i++) {
+                    let spreadVx = this.vx + (i * 120);
+                    let spreadVy = this.vy - 100 + (Math.abs(i) * -50);
+                    gameManager.projectiles.push(new Projectile(this.x, this.y, spreadVx, spreadVy, WEAPONS.SHRAPNEL));
+                }
+                
+                // Visueller "Plopp"
+                gameManager.particles.spawnMiniPoof(this.x, this.y);
+            }
+        }
+    }
+
+    draw(ctx) {
+        if (!this.active) return;
+
+        if (this.trail.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(this.trail[0].x, this.trail[0].y);
+            for(let i = 1; i < this.trail.length; i++) {
+                ctx.lineTo(this.trail[i].x, this.trail[i].y);
+            }
+            const alpha = this.stats.type === 'SHRAPNEL' ? 0.3 : 0.6;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.lineWidth = this.stats.radius / 1.5;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.stats.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.stats.color;
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(this.x - 2, this.y - 2, this.stats.radius / 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fill();
+    }
+}
+
+class ParticleSystem {
+    constructor() {
+        this.particles = [];
+        this.explosions = [];
+        this.texts = [];
+    }
+
+    spawnExplosion(x, y, radius) {
+        this.explosions.push({ x, y, radius: 10, maxRadius: radius, alpha: 1.0 });
+        
+        const count = radius > 40 ? 40 : 20;
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = MathUtils.randomRange(50, 400);
+            this.particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 150, 
+                life: 1.0,
+                decay: MathUtils.randomRange(0.5, 2.0),
+                color: Math.random() > 0.3 ? '#ff7675' : '#fdcb6e',
+                size: MathUtils.randomRange(2, 7)
+            });
+        }
+    }
+
+    spawnMiniPoof(x, y) {
+        for (let i = 0; i < 15; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            this.particles.push({
+                x, y,
+                vx: Math.cos(angle) * 80, vy: Math.sin(angle) * 80, 
+                life: 1.0, decay: 1.5,
+                color: '#ecf0f1', size: MathUtils.randomRange(1, 4)
+            });
+        }
+    }
+
+    spawnDamageText(x, y, damage) {
+        this.texts.push({ x, y, text: `-${damage}`, life: 1.0 });
+    }
+
+    update(dt, wind) {
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.vx += wind * 0.5 * dt; 
+            p.vy += CONFIG.gravity * 0.8 * dt;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.life -= p.decay * dt;
+            if (p.life <= 0) this.particles.splice(i, 1);
+        }
+
+        for (let i = this.explosions.length - 1; i >= 0; i--) {
+            const exp = this.explosions[i];
+            exp.radius += 300 * dt; 
+            exp.alpha -= 2.0 * dt;
+            if (exp.alpha <= 0 || exp.radius >= exp.maxRadius) this.explosions.splice(i, 1);
+        }
+
+        for (let i = this.texts.length - 1; i >= 0; i--) {
+            const t = this.texts[i];
+            t.y -= 60 * dt; 
+            t.life -= 1.0 * dt;
+            if (t.life <= 0) this.texts.splice(i, 1);
+        }
+    }
+
+    draw(ctx) {
+        this.explosions.forEach(exp => {
+            ctx.beginPath();
+            ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 150, 0, ${exp.alpha * 0.5})`; 
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = `rgba(255, 200, 0, ${exp.alpha})`;
+            ctx.stroke();
+        });
+
+        this.particles.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        });
+
+        this.texts.forEach(t => {
+            ctx.font = '900 26px Arial';
+            ctx.textAlign = 'center';
+            const alpha = Math.max(0, t.life);
+            ctx.fillStyle = `rgba(255, 50, 50, ${alpha})`;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.lineWidth = 5;
+            ctx.strokeText(t.text, t.x, t.y);
+            ctx.fillText(t.text, t.x, t.y);
         });
     }
 }
 
-function checkTowerCollision(px, py) {
-    const targetTower = currentPlayer === 1 ? p2 : p1;
-    
-    // Einfache Rechteck-Kollision (AABB)
-    if (px > targetTower.x && px < targetTower.x + targetTower.w &&
-        py > targetTower.y && py < targetTower.y + targetTower.h) {
+// --- CORE GAME ENGINE ---
+class GameManager {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
         
-        // Treffer!
-        createExplosion(px, py);
-        floatingTexts.push({ x: px, y: py - 20, text: `-${GAME_PHYSICS.maxDamage}`, life: 1.0 });
-        targetTower.hp -= GAME_PHYSICS.maxDamage;
-        if (targetTower.hp < 0) targetTower.hp = 0;
+        this.state = 'IDLE'; 
+        this.round = 1;
+        this.currentWeapon = WEAPONS.STANDARD;
         
-        // Update HP Bars in UI
-        document.getElementById(`hp${targetTower === p1 ? 1 : 2}`).style.width = `${targetTower.hp}%`;
+        this.terrain = new Terrain(CONFIG.w, CONFIG.h);
+        this.p1 = new Player(1, 'p1-color', 150);
+        this.p2 = new Player(2, 'p2-color', CONFIG.w - 190);
+        this.currentPlayer = this.p1;
         
-        if (targetTower.hp <= 0) {
-            gameState = 'gameover';
-            document.getElementById('turn-indicator').innerText = `SPIELER ${currentPlayer} GEWINNT!`;
-        } else {
-            endTurn();
-        }
-        return true;
-    }
-    return false;
-}
-
-function updatePhysics() {
-    if (gameState === 'firing' && projectile.active) {
-        // Gravitation und Wind anwenden
-        projectile.vx += GAME_PHYSICS.wind;
-        projectile.vy += GAME_PHYSICS.gravity;
+        this.particles = new ParticleSystem();
+        this.projectiles = []; // NEU: Array für multiple Projektile (Cluster)
         
-        // Position updaten
-        projectile.x += projectile.vx;
-        projectile.y += projectile.vy;
-
-        // 1. Check: Fliegt das Projektil links oder rechts aus dem Bildschirm?
-        if (projectile.x < 0 || projectile.x > canvas.width) {
-            endTurn();
-            return;
-        }
-
-        // (Es darf nach oben aus dem Bild fliegen, die Gravitation holt es zurück!)
-        if (projectile.y > canvas.height) { // Fällt ganz unten raus
-            endTurn();
-            return;
-        }
-
-        // 2. Check: Kollision mit dem Boden
-        let floorX = Math.floor(projectile.x);
-        if (floorX >= 0 && floorX <= canvas.width && projectile.y >= ground[floorX]) {
-            createExplosion(projectile.x, projectile.y);
-            endTurn();
-            return;
-        }
-
-        // 3. Check: Kollision mit dem gegnerischen Turm
-        if (checkTowerCollision(projectile.x, projectile.y)) {
-            projectile.active = false;
-        }
-
-    // Partikel updaten
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        p.vx *= 0.95; // Reibung
-        p.vy += GAME_PHYSICS.gravity * 0.5; // Leichte Gravitation
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= p.decay;
-        if (p.life <= 0) particles.splice(i, 1);
+        this.wind = 0;
+        this.screenShake = 0;
+        this.mouseX = 0; this.mouseY = 0;
+        
+        this.setupInputs();
+        this.lastTime = performance.now();
+        
+        // Initiale Positionierung garantieren
+        this.p1.update(1.0, this.terrain);
+        this.p2.update(1.0, this.terrain);
+        
+        this.updateUI();
+        requestAnimationFrame(this.gameLoop.bind(this));
     }
 
-    // Schadenszahlen updaten
-    for (let i = floatingTexts.length - 1; i >= 0; i--) {
-        let ft = floatingTexts[i];
-        ft.y -= 1; // Steigt nach oben
-        ft.life -= 0.02;
-        if (ft.life <= 0) floatingTexts.splice(i, 1);
-    }
-
-    // Rauch für stark beschädigte Burgen erzeugen
-    towers.forEach(tower => {
-        if (tower.hp <= 30 && Math.random() < 0.2) {
-            particles.push({
-                x: tower.x + Math.random() * tower.w,
-                y: tower.y + Math.random() * (tower.h / 2),
-                vx: (Math.random() - 0.5) * 1 + GAME_PHYSICS.wind,
-                vy: -Math.random() * 2 - 1,
-                life: 1.0,
-                decay: 0.015,
-                color: 'rgba(50, 50, 50, 0.6)',
-                size: Math.random() * 8 + 4
-            });
-        }
-    });
-    }
-
-    // Explosionen updaten
-    for (let i = explosions.length - 1; i >= 0; i--) {
-        let exp = explosions[i];
-        exp.radius += 2; // Explosionsgeschwindigkeit
-        exp.alpha -= 0.05; // Fade-Out
-        if (exp.alpha <= 0) {
-            explosions.splice(i, 1);
-        }
-    }
-}
-
-// --- Render-Loop ---
-function draw() {
-    // 1. Hintergrund leeren
-    let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    skyGrad.addColorStop(0, '#87CEEB');
-    skyGrad.addColorStop(1, '#E0F6FF');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 1.5 Wolken zeichnen
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    clouds.forEach(cloud => {
-        cloud.x += cloud.speed + (GAME_PHYSICS.wind * 1.5); // Wind beeinflusst Wolken leicht
-        if (cloud.x > canvas.width + 100) cloud.x = -100;
-        if (cloud.x < -100) cloud.x = canvas.width + 100;
-
-        ctx.save();
-        ctx.translate(cloud.x, cloud.y);
-        ctx.scale(cloud.scale, cloud.scale);
-        ctx.beginPath();
-        ctx.arc(0, 0, 20, 0, Math.PI * 2);
-        ctx.arc(15, -10, 25, 0, Math.PI * 2);
-        ctx.arc(35, 0, 20, 0, Math.PI * 2);
-        ctx.arc(15, 10, 20, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    });
-
-    // 2. Landschaft zeichnen
-    // Erde (Dunkler Verlauf)
-    let dirtGrad = ctx.createLinearGradient(0, 350, 0, 500);
-    dirtGrad.addColorStop(0, '#5D4037');
-    dirtGrad.addColorStop(1, '#3E2723');
-    ctx.fillStyle = dirtGrad;
-    ctx.beginPath();
-    ctx.moveTo(0, canvas.height);
-    for (let x = 0; x <= canvas.width; x++) {
-        ctx.lineTo(x, ground[x]);
-    }
-    ctx.lineTo(canvas.width, canvas.height);
-    ctx.closePath();
-    ctx.fill();
-
-    // Grasnarbe oben
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = '#27ae60';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    for (let x = 0; x <= canvas.width; x++) {
-        if (x === 0) ctx.moveTo(x, ground[x]);
-        else ctx.lineTo(x, ground[x]);
-    }
-    ctx.stroke();
-    
-    // Helles Gras als Highlight
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#2ecc71';
-    ctx.stroke();
-
-    // 3. Türme zeichnen
-    towers.forEach(tower => {
-        ctx.fillStyle = tower.color;
+    setupInputs() {
+        // Weapon Selection UI
+        document.getElementById('wpn-standard').addEventListener('click', (e) => {
+            if (this.state !== 'IDLE') return;
+            this.currentWeapon = WEAPONS.STANDARD;
+            document.querySelectorAll('.weapon-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
         
-        // Zinnen (Dach)
-        for(let i=0; i<3; i++) {
-            ctx.fillRect(tower.x + i * (tower.w/3) + 2, tower.y - 12, (tower.w/3)-4, 12);
-        }
-        
-        // Hauptgebäude
-        ctx.fillRect(tower.x, tower.y, tower.w, tower.h);
-        
-        // Mauerwerk-Effekt (Bricks)
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-        ctx.lineWidth = 1;
-        const rows = 6;
-        const cols = 2;
-        const bH = tower.h / rows;
-        const bW = tower.w / cols;
-        for(let r=0; r<rows; r++) {
-            for(let c=0; c<cols; c++) {
-                let offset = (r%2===0) ? 0 : bW/2;
-                ctx.strokeRect(tower.x + c*bW - offset, tower.y + r*bH, bW, bH);
-            }
-        }
+        document.getElementById('wpn-cluster').addEventListener('click', (e) => {
+            if (this.state !== 'IDLE') return;
+            this.currentWeapon = WEAPONS.CLUSTER;
+            document.querySelectorAll('.weapon-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+        });
 
-        // Visueller Schaden (Risse & Brandspuren)
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(tower.x, tower.y - 15, tower.w, tower.h + 15);
-        ctx.clip(); // Maske: Nicht über den Turm hinaus zeichnen
+        this.canvas.addEventListener('mousedown', (e) => {
+            if (this.state !== 'IDLE') return;
+            const rect = this.canvas.getBoundingClientRect();
+            this.mouseX = e.clientX - rect.left;
+            this.mouseY = e.clientY - rect.top;
 
-        if (tower.hp < 100) {
-            // Brandspuren
-            let grad = ctx.createRadialGradient(tower.x + tower.w/2, tower.y, 0, tower.x + tower.w/2, tower.y, 40);
-            let alpha = 1 - (tower.hp / 100); 
-            grad.addColorStop(0, `rgba(0, 0, 0, ${alpha * 0.8})`);
-            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = grad;
-            ctx.fillRect(tower.x, tower.y-15, tower.w, tower.h+15);
-        }
-
-        // Risse & Abbrüche
-        ctx.strokeStyle = 'rgba(30, 30, 30, 0.85)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        if (tower.hp <= 75) {
-            ctx.moveTo(tower.x + 10, tower.y);
-            ctx.lineTo(tower.x + 15, tower.y + 15);
-            ctx.lineTo(tower.x + 5, tower.y + 25);
-        }
-        if (tower.hp <= 50) {
-            ctx.moveTo(tower.x + tower.w - 5, tower.y + 5);
-            ctx.lineTo(tower.x + tower.w - 15, tower.y + 20);
-            ctx.lineTo(tower.x + tower.w - 10, tower.y + 35);
-            ctx.moveTo(tower.x + tower.w/2, tower.y + 25);
-            ctx.lineTo(tower.x + tower.w/2 + 10, tower.y + 40);
-        }
-        if (tower.hp <= 25) {
-            ctx.moveTo(tower.x + 5, tower.y + 25);
-            ctx.lineTo(tower.x + 20, tower.y + 40);
-            ctx.lineTo(tower.x + 15, tower.y + 55);
+            const cx = this.currentPlayer.x + this.currentPlayer.w / 2;
+            const cy = this.currentPlayer.y + this.currentPlayer.h / 2;
             
-            // Ein dunkles "Loch" zeichnen, wo Steine fehlen
-            ctx.fillStyle = 'rgba(0,0,0,0.85)';
-            ctx.fillRect(tower.x + tower.w - 18, tower.y + 15, 18, 15);
-            ctx.fillRect(tower.x, tower.y + 35, 12, 10);
-        }
-        ctx.stroke();
-        ctx.restore();
-    });
+            if (MathUtils.distance(this.mouseX, this.mouseY, cx, cy) < 120) {
+                this.state = 'AIMING';
+            }
+        });
 
-    // 4. Ziel-Vorschau zeichnen (Gestrichelte Linie)
-    if (gameState === 'aiming') {
-        const activeTower = currentPlayer === 1 ? p1 : p2;
-        const centerX = activeTower.x + activeTower.w / 2;
-        const centerY = activeTower.y;
+        window.addEventListener('mousemove', (e) => {
+            if (this.state === 'AIMING') {
+                const rect = this.canvas.getBoundingClientRect();
+                this.mouseX = e.clientX - rect.left;
+                this.mouseY = e.clientY - rect.top;
+            }
+        });
 
-        let pullX = centerX - mouseX;
-        let pullY = centerY - mouseY;
+        window.addEventListener('mouseup', () => {
+            if (this.state === 'AIMING') this.fireProjectile();
+        });
 
-        const pullDist = Math.hypot(pullX, pullY);
-        if (pullDist > GAME_PHYSICS.maxDragDistance) {
-            const ratio = GAME_PHYSICS.maxDragDistance / pullDist;
+        document.getElementById('btn-next').addEventListener('click', () => {
+            this.startNewRound();
+        });
+    }
+
+    fireProjectile() {
+        const cx = this.currentPlayer.x + this.currentPlayer.w / 2;
+        const cy = this.currentPlayer.y;
+
+        let pullX = cx - this.mouseX;
+        let pullY = cy - this.mouseY;
+
+        const dist = Math.hypot(pullX, pullY);
+        if (dist > CONFIG.maxDrag) {
+            const ratio = CONFIG.maxDrag / dist;
             pullX *= ratio;
             pullY *= ratio;
         }
 
-        // Zeige die "Gummiband"-Sehne an
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.lineTo(centerX - pullX, centerY - pullY);
-        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-        ctx.lineWidth = 3;
-        ctx.stroke();
+        this.projectiles.push(new Projectile(cx, cy, pullX * CONFIG.powerMultiplier, pullY * CONFIG.powerMultiplier, this.currentWeapon));
+        this.state = 'FIRING';
+        this.updateUI();
+    }
 
-        // Berechne und zeichne die Flugbahn (Parabel-Vorschau)
-        let simX = centerX;
-        let simY = centerY;
-        let simVx = pullX * GAME_PHYSICS.powerMultiplier;
-        let simVy = pullY * GAME_PHYSICS.powerMultiplier;
+    checkCollisions() {
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const proj = this.projectiles[i];
+            if (!proj.active) continue;
 
-        ctx.beginPath();
-        ctx.moveTo(simX, simY);
-        ctx.setLineDash([5, 10]); // Gestrichelte Linie
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.lineWidth = 2;
+            const px = proj.x;
+            const py = proj.y;
 
-        for (let i = 0; i < 40; i++) { // Zeige die ersten 40 "Frames" der Flugbahn
-            simVx += GAME_PHYSICS.wind;
-            simVy += GAME_PHYSICS.gravity;
-            simX += simVx;
-            simY += simVy;
-            ctx.lineTo(simX, simY);
+            // 1. Pixel-Perfect Terrain Kollision
+            // Wir checken einen leichten Offset nach unten/vorne basierend auf Geschwindigkeit
+            const checkX = px + (proj.vx * 0.01);
+            const checkY = py + (proj.vy * 0.01);
+            
+            if (this.terrain.isSolid(checkX, checkY)) {
+                this.handleExplosion(proj);
+                continue; // Gehe zum nächsten Projektil
+            }
+
+            // 2. Direkter Spieler-Treffer
+            const enemy = this.currentPlayer === this.p1 ? this.p2 : this.p1;
+            if (px > enemy.x && px < enemy.x + enemy.w && py > enemy.y && py < enemy.y + enemy.h) {
+                this.handleExplosion(proj);
+            }
         }
-        ctx.stroke();
-        ctx.setLineDash([]); // Reset für andere Zeichenoperationen
     }
 
-    // 5. Projektil zeichnen ("Bombe" mit Highlight)
-    if (gameState === 'firing' && projectile.active) {
-        ctx.beginPath();
-        ctx.arc(projectile.x, projectile.y, GAME_PHYSICS.projectileRadius, 0, Math.PI * 2);
-        ctx.fillStyle = '#222';
-        ctx.fill();
+    handleExplosion(proj) {
+        proj.active = false;
         
-        // Kleiner Glanzpunkt auf der Bombe
-        ctx.beginPath();
-        ctx.arc(projectile.x - 2, projectile.y - 2, GAME_PHYSICS.projectileRadius / 3, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.fill();
+        // Explosion & Krater (abhängig von Waffe)
+        this.particles.spawnExplosion(proj.x, proj.y, proj.stats.expRadius);
+        this.terrain.createCrater(proj.x, proj.y, proj.stats.expRadius);
+        
+        // Splash Damage
+        [this.p1, this.p2].forEach(p => {
+            const cx = p.x + p.w / 2;
+            const cy = p.y + p.h / 2;
+            const dist = MathUtils.distance(proj.x, proj.y, cx, cy);
+            
+            // Etwas größerer Damage-Radius als der visuelle Krater
+            const dmgRadius = proj.stats.expRadius + 15; 
+            if (dist < dmgRadius) {
+                const damageRatio = Math.max(0.1, 1 - (dist / dmgRadius));
+                const damage = Math.round(proj.stats.damage * damageRatio);
+                
+                p.hp = Math.max(0, p.hp - damage);
+                this.particles.spawnDamageText(cx, cy - 30, damage);
+                this.screenShake += damage * 0.6; // Kumulativer Shake bei Cluster-Bomben
+            }
+        });
+
+        this.updateUI();
     }
 
-    // 6. Explosionen zeichnen (Druckwelle)
-    explosions.forEach(exp => {
-        ctx.beginPath();
-        ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 165, 0, ${exp.alpha * 0.5})`; 
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = `rgba(255, 200, 0, ${exp.alpha})`;
-        ctx.stroke();
-    });
+    checkTurnEnd() {
+        // Prüfen, ob noch aktive Bomben oder Shrapnels in der Luft sind
+        const hasActiveProjectiles = this.projectiles.some(p => p.active);
+        
+        if (!hasActiveProjectiles && this.state === 'FIRING') {
+            this.state = 'WAITING';
+            
+            if (this.p1.hp === 0 || this.p2.hp === 0) {
+                this.endRound();
+            } else {
+                // Kurz abwarten, bis Partikel verfliegen, dann Zug wechseln
+                setTimeout(() => this.nextTurn(), 1200);
+            }
+        }
+    }
 
-    // 7. Partikel zeichnen (Trümmer & Rauch)
-    particles.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-    });
+    nextTurn() {
+        if (this.state === 'ROUND_OVER') return;
+        
+        this.currentPlayer = this.currentPlayer === this.p1 ? this.p2 : this.p1;
+        this.wind = MathUtils.randomRange(-CONFIG.maxWind, CONFIG.maxWind);
+        this.state = 'IDLE';
+        this.projectiles = []; // Array säubern
+        this.updateUI();
+    }
 
-    // 8. Aufsteigende Schadenszahlen
-    floatingTexts.forEach(ft => {
-        ctx.font = 'bold 18px Arial';
-        ctx.fillStyle = `rgba(255, 0, 0, ${Math.max(0, ft.life)})`;
-        ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(0, ft.life)})`;
-        ctx.lineWidth = 3;
-        ctx.strokeText(ft.text, ft.x - 10, ft.y);
-        ctx.fillText(ft.text, ft.x - 10, ft.y);
-    });
+    endRound() {
+        this.state = 'ROUND_OVER';
+        
+        let winnerText = "Unentschieden!";
+        if (this.p1.hp > 0 && this.p2.hp <= 0) {
+            this.p1.score++; winnerText = "Spieler 1 gewinnt die Runde!";
+        } else if (this.p2.hp > 0 && this.p1.hp <= 0) {
+            this.p2.score++; winnerText = "Spieler 2 gewinnt die Runde!";
+        }
 
-    // Loop fortsetzen
-    updatePhysics();
-    requestAnimationFrame(draw);
+        document.getElementById('score-1').innerText = `Siege: ${this.p1.score}`;
+        document.getElementById('score-2').innerText = `Siege: ${this.p2.score}`;
+        document.getElementById('overlay-subtitle').innerText = winnerText;
+        document.getElementById('overlay').classList.add('active');
+    }
+
+    startNewRound() {
+        this.round++;
+        this.terrain.generate();
+        this.p1.resetForRound();
+        this.p2.resetForRound();
+        
+        // P1 und P2 nach Terrain-Generierung neu auf den Boden setzen
+        this.p1.update(1.0, this.terrain);
+        this.p2.update(1.0, this.terrain);
+        
+        this.currentPlayer = this.round % 2 === 0 ? this.p2 : this.p1;
+        this.wind = 0;
+        this.projectiles = [];
+        this.state = 'IDLE';
+        
+        document.getElementById('overlay').classList.remove('active');
+        this.updateUI();
+    }
+
+    updateUI() {
+        document.getElementById('hp-fill-1').style.width = `${this.p1.hp}%`;
+        document.getElementById('hp-fill-2').style.width = `${this.p2.hp}%`;
+
+        const status = document.getElementById('status-display');
+        status.className = this.currentPlayer.color;
+        
+        if (this.state === 'IDLE') status.innerText = `Zug: Spieler ${this.currentPlayer.id}`;
+        else if (this.state === 'AIMING') status.innerText = `Zielen...`;
+        else if (this.state === 'FIRING') status.innerText = `Im Flug...`;
+        else if (this.state === 'WAITING') status.innerText = `Abwarten...`;
+
+        document.getElementById('round-badge').innerText = `Runde ${this.round}`;
+        
+        const windElement = document.getElementById('wind-badge');
+        if (Math.abs(this.wind) < 15) windElement.innerText = `Wind: Stille`;
+        else if (this.wind > 0) windElement.innerText = `Wind: ${Math.round(this.wind)} >>>`;
+        else windElement.innerText = `Wind: <<< ${Math.round(Math.abs(this.wind))}`;
+    }
+
+    drawAimLine() {
+        const cx = this.currentPlayer.x + this.currentPlayer.w / 2;
+        const cy = this.currentPlayer.y;
+
+        let pullX = cx - this.mouseX;
+        let pullY = cy - this.mouseY;
+
+        const dist = Math.hypot(pullX, pullY);
+        if (dist > CONFIG.maxDrag) {
+            const ratio = CONFIG.maxDrag / dist;
+            pullX *= ratio;
+            pullY *= ratio;
+        }
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(cx, cy);
+        this.ctx.lineTo(cx - pullX, cy - pullY);
+        this.ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+
+        let simX = cx; let simY = cy;
+        let simVx = pullX * CONFIG.powerMultiplier;
+        let simVy = pullY * CONFIG.powerMultiplier;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(simX, simY);
+        this.ctx.setLineDash([6, 8]);
+        
+        // Vorschau-Farbe entspricht Waffe
+        this.ctx.strokeStyle = this.currentWeapon === WEAPONS.CLUSTER ? 'rgba(225, 112, 85, 0.8)' : 'rgba(255, 255, 255, 0.6)';
+        this.ctx.lineWidth = 2;
+
+        const simDt = 0.05; 
+        for (let i = 0; i < 35; i++) { 
+            simVx += this.wind * simDt;
+            simVy += CONFIG.gravity * simDt;
+            simX += simVx * simDt;
+            simY += simVy * simDt;
+            this.ctx.lineTo(simX, simY);
+        }
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+    }
+
+    gameLoop(currentTime) {
+        let dt = (currentTime - this.lastTime) / 1000;
+        this.lastTime = currentTime;
+        if (dt > 0.05) dt = 0.05; // Hard-Cap gegen Lag-Durchschlagen
+
+        // --- UPDATE ---
+        this.p1.update(dt, this.terrain);
+        this.p2.update(dt, this.terrain);
+        this.particles.update(dt, this.wind);
+
+        if (this.state === 'FIRING') {
+            this.projectiles.forEach(p => p.update(dt, this.wind, this));
+            this.checkCollisions();
+            this.checkTurnEnd();
+        }
+
+        if (this.screenShake > 0) {
+            this.screenShake -= 30 * dt;
+            if (this.screenShake < 0) this.screenShake = 0;
+        }
+
+        // --- RENDER ---
+        this.ctx.save();
+        
+        if (this.screenShake > 0) {
+            const maxShake = Math.min(this.screenShake, 20); // Cap
+            const dx = MathUtils.randomRange(-maxShake, maxShake);
+            const dy = MathUtils.randomRange(-maxShake, maxShake);
+            this.ctx.translate(dx, dy);
+        }
+
+        // Deep Night Sky Hintergrund
+        const skyGrad = this.ctx.createLinearGradient(0, 0, 0, CONFIG.h);
+        skyGrad.addColorStop(0, '#0a0a1a');
+        skyGrad.addColorStop(1, '#2c3e50');
+        this.ctx.fillStyle = skyGrad;
+        this.ctx.fillRect(0, 0, CONFIG.w, CONFIG.h);
+
+        // Render Order: Terrain -> Players -> Aim -> Projectiles -> Particles
+        this.terrain.draw(this.ctx);
+        this.p1.draw(this.ctx);
+        this.p2.draw(this.ctx);
+        
+        if (this.state === 'AIMING') this.drawAimLine();
+        this.projectiles.forEach(p => p.draw(this.ctx));
+        this.particles.draw(this.ctx);
+
+        this.ctx.restore();
+
+        requestAnimationFrame(this.gameLoop.bind(this));
+    }
 }
 
-// Spiel starten
-draw();
-
+window.onload = () => {
+    const game = new GameManager();
+};
 </script>
 </body>
 </html>
